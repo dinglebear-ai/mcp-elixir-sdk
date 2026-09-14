@@ -410,14 +410,10 @@ defmodule MCP.Transport.StreamableHTTP.Plug do
   # --- POST: the request/response path ---
 
   defp handle_post(conn, config) do
-    with {:ok, body, conn} <-
-           Plug.Conn.read_body(conn,
-             length: config.max_body_length,
-             read_length: min(config.max_body_length, 1_000_000)
-           ),
-         {:ok, message} <- Jason.decode(body) do
-      handle_decoded_post(conn, config, message)
-    else
+    case decode_request_body(conn, config) do
+      {:ok, message, conn} ->
+        handle_decoded_post(conn, config, message)
+
       {:more, _partial_body, conn} ->
         send_json_error(
           conn,
@@ -440,6 +436,21 @@ defmodule MCP.Transport.StreamableHTTP.Plug do
         )
     end
   end
+
+  defp decode_request_body(%Plug.Conn{body_params: %Plug.Conn.Unfetched{}} = conn, config) do
+    with {:ok, body, conn} <-
+           Plug.Conn.read_body(conn,
+             length: config.max_body_length,
+             read_length: min(config.max_body_length, 1_000_000)
+           ),
+         {:ok, message} <- Jason.decode(body) do
+      {:ok, message, conn}
+    end
+  end
+
+  defp decode_request_body(%Plug.Conn{body_params: body_params} = conn, _config)
+       when is_map(body_params),
+       do: {:ok, body_params, conn}
 
   defp handle_decoded_post(conn, config, message) when is_map(message) do
     cond do

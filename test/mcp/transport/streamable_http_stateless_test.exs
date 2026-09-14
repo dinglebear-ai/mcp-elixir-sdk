@@ -95,6 +95,26 @@ defmodule MCP.Transport.StreamableHTTPStatelessTest do
     assert r["_meta"]["io.modelcontextprotocol/serverInfo"]["name"]
   end
 
+  test "accepts JSON already decoded by an upstream Plug.Parsers pipeline" do
+    parser_opts =
+      Plug.Parsers.init(
+        parsers: [:json],
+        pass: ["*/*"],
+        json_decoder: Jason
+      )
+
+    conn =
+      post(
+        opts(),
+        rpc("server/discover", with_meta(%{})),
+        [],
+        &Plug.Parsers.call(&1, parser_opts)
+      )
+
+    assert conn.status == 200
+    assert result(conn)["supportedVersions"] == [@version]
+  end
+
   test "tools/list then tools/call work directly, no initialize first" do
     list = post(opts(), rpc("tools/list", with_meta(%{}))) |> result()
     assert Enum.any?(list["tools"], &(&1["name"] == "whoami"))

@@ -376,6 +376,35 @@ defmodule MCP.Transport.LegacySessionHardeningTest do
     assert :gb_sets.size(state.expirations) == 1
   end
 
+  test "sweeping the last session removes the endpoint session bucket" do
+    name = Module.concat(__MODULE__, "SetCleanupManager#{System.unique_integer([:positive])}")
+    manager = start_supervised!({LegacySessionManager, name: name})
+    limits = manager_limits(self(), idle_timeout: 1)
+
+    assert {:ok, id, _session} =
+             LegacySessionManager.create(
+               manager,
+               :cleanup_endpoint,
+               :alice,
+               StatelessHandler,
+               [],
+               [],
+               limits
+             )
+
+    state = :sys.get_state(manager)
+    assert MapSet.member?(state.endpoint_sessions.cleanup_endpoint, id)
+
+    future = System.monotonic_time(:millisecond) + 10_000
+    assert :ok = LegacySessionManager.sweep(manager, future)
+
+    state = :sys.get_state(manager)
+    assert state.sessions == %{}
+    assert state.endpoint_sessions == %{}
+    assert state.endpoint_counts == %{}
+    assert state.identity_counts == %{}
+  end
+
   test "failed initialization cleanup returns monitor count to baseline" do
     name = Module.concat(__MODULE__, "MonitorManager#{System.unique_integer([:positive])}")
     manager = start_supervised!({LegacySessionManager, name: name})
