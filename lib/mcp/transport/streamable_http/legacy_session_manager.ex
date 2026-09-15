@@ -466,9 +466,12 @@ defmodule MCP.Transport.StreamableHTTP.LegacySessionManager do
   defp delete_from_set(map, key, value) do
     case Map.fetch(map, key) do
       {:ok, set} ->
-        case MapSet.delete(set, value) do
-          updated when map_size(updated) == 0 -> Map.delete(map, key)
-          updated -> Map.put(map, key, updated)
+        updated = MapSet.delete(set, value)
+
+        if MapSet.size(updated) == 0 do
+          Map.delete(map, key)
+        else
+          Map.put(map, key, updated)
         end
 
       :error ->

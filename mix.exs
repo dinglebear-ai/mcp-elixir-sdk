@@ -13,7 +13,7 @@ defmodule MCPElixirSDK.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       aliases: aliases(),
-      dialyzer: [plt_add_apps: [:ex_unit]],
+      dialyzer: [plt_add_apps: [:ex_unit, :erlexec]],
 
       # Hex
       name: "MCP Elixir SDK",
@@ -158,7 +158,7 @@ defmodule MCPElixirSDK.MixProject do
     [
       {:jason, "~> 1.4"},
       {:elixir_uuid, "~> 1.2"},
-      {:erlexec, "~> 2.3"},
+      {:erlexec, "~> 2.3", runtime: false},
 
       # Optional: Streamable HTTP transport
       {:req, ">= 0.6.1 and < 0.8.0", optional: true},

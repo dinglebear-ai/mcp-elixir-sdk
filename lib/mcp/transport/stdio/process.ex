@@ -41,6 +41,7 @@ defmodule MCP.Transport.Stdio.Process do
     cleanup_marker = cleanup_marker()
 
     with :ok <- validate_command(command, args, env),
+         :ok <- ensure_erlexec_started(),
          {:ok, exec_pid, os_pid} <-
            :exec.run([command | args], process_options(policy, env, cleanup_marker)) do
       {:ok,
@@ -53,6 +54,13 @@ defmodule MCP.Transport.Stdio.Process do
        }}
     else
       {:error, reason} -> {:stop, {:process_start_failed, reason}}
+    end
+  end
+
+  defp ensure_erlexec_started do
+    case Application.ensure_all_started(:erlexec) do
+      {:ok, _started} -> :ok
+      {:error, {app, reason}} -> {:error, {:erlexec_start_failed, app, reason}}
     end
   end
 

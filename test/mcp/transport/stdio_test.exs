@@ -22,6 +22,18 @@ defmodule MCP.Transport.StdioTest do
   end
 
   describe "client mode with echo server" do
+    test "stdio lazily starts erlexec instead of making every SDK consumer start it" do
+      _ = Application.stop(:erlexec)
+
+      refute :erlexec in (Application.spec(:mcp_elixir_sdk, :applications) || [])
+      refute Enum.any?(Application.started_applications(), fn {app, _, _} -> app == :erlexec end)
+
+      transport = start_echo_transport()
+
+      assert Enum.any?(Application.started_applications(), fn {app, _, _} -> app == :erlexec end)
+      assert :ok = Stdio.close(transport)
+    end
+
     test "sends a request and receives echo response" do
       transport = start_echo_transport()
 
