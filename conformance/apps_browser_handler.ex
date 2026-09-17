@@ -15,7 +15,7 @@ defmodule MCP.Conformance.AppsBrowserHandler do
      [
        %{
          "name" => @view_tool,
-         "description" => "Render the MCP Elixir SDK Apps interoperability view",
+         "description" => "Render the Plexus Apps interoperability view",
          "inputSchema" => %{"type" => "object", "additionalProperties" => false},
          "_meta" => %{
            "ui" => %{"resourceUri" => @resource_uri, "visibility" => ["model", "app"]}
@@ -136,7 +136,7 @@ defmodule MCP.Conformance.AppsBrowserHandler do
               method: "ui/initialize",
               params: {
                 protocolVersion: "2026-01-26",
-                appInfo: {name: "mcp-elixir-sdk-interop", version: "1.0.0"},
+                appInfo: {name: "plexus-interop", version: "1.0.0"},
                 appCapabilities: {}
               }
             });

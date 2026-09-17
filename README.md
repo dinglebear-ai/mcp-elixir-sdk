@@ -1,4 +1,4 @@
-# MCP Elixir SDK
+# Plexus
 
 An OTP-native Elixir client and server SDK for the Model Context Protocol. The
 unreleased 2.0 line supports stateful `2025-11-25` plus
@@ -51,8 +51,8 @@ current `main` commit):
 ```elixir
 def deps do
   [
-    {:mcp_elixir_sdk,
-     git: "https://github.com/jmagar/mcp-elixir-sdk.git",
+    {:plexus,
+     git: "https://github.com/dinglebear-ai/plexus.git",
      ref: "e9c7fb8927de1d54c74ffecd21bfed63ba1a19ef"}
   ]
 end

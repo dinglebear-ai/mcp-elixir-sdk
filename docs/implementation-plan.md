@@ -1,4 +1,4 @@
-# Implementation Plan: MCP Elixir SDK
+# Implementation Plan: Plexus
 
 > **Archived 1.x implementation record.** The stateful `2025-11-25` phases
 > below have been superseded by the SDK 2.0 stateless implementation. Use the
@@ -6,7 +6,7 @@
 > [current architecture](architecture.md) for actionable work and APIs.
 
 ## Document Info
-- **Project**: MCP Elixir SDK (Hex package `mcp_elixir_sdk`)
+- **Project**: Plexus (Hex package `plexus`)
 - **Version**: 1.0.2
 - **Date**: 2026-02-09
 - **Status**: Phase 7 Complete — 100% Conformance (Tier 1)
@@ -41,7 +41,7 @@ git clone https://github.com/modelcontextprotocol/conformance /workspace/samples
   - `mix new mcp_ex --sup`
   - Configure mix.exs with deps: jason, elixir_uuid, dialyxir, credo, ex_doc
   - Set Elixir >= 1.17, OTP >= 26
-  - Application name `:mcp_ex` — later renamed to `:mcp_elixir_sdk` for the Hex release (the `mcp_ex` name was taken; local directory kept as `mcp_ex`)
+  - Application name `:mcp_ex` — later renamed to `:plexus` for the Hex release (the `mcp_ex` name was taken; local directory kept as `mcp_ex`)
 
 - [x] **1.2** Define protocol error module (`lib/mcp/protocol/error.ex`)
   - `MCP.Protocol.Error` struct: code, message, data

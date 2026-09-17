@@ -17,7 +17,7 @@ defmodule MCP.Server.DispatchTest do
     %{
       handler_module: StatelessHandler,
       handler_state: state,
-      server_info: %Implementation{name: "mcp_elixir_sdk", version: "2.0.0"},
+      server_info: %Implementation{name: "plexus", version: "2.0.0"},
       capabilities: %ServerCapabilities{},
       instructions: nil,
       handler_callback_timeout: 30_000,
@@ -140,7 +140,7 @@ defmodule MCP.Server.DispatchTest do
     assert result["resultType"] == "complete"
     assert result["ttlMs"] == 0
     assert result["cacheScope"] == "public"
-    assert result["_meta"]["io.modelcontextprotocol/serverInfo"]["name"] == "mcp_elixir_sdk"
+    assert result["_meta"]["io.modelcontextprotocol/serverInfo"]["name"] == "plexus"
     # the pre-fix (wrong) shape must be gone
     refute Map.has_key?(result, "protocolVersions")
     refute Map.has_key?(result, "serverInfo")

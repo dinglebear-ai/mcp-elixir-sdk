@@ -1,6 +1,6 @@
 # Architecture
 
-MCP Elixir SDK 2.0 is an OTP-native dual-version implementation of MCP
+Plexus 2.0 is an OTP-native dual-version implementation of MCP
 `2025-11-25` and `2026-07-28`. Stateless 2026 dispatch remains
 sessionless; the legacy revision uses an explicit initialize/session adapter. There is no
 client-side result cache or mutable per-request handler configuration.

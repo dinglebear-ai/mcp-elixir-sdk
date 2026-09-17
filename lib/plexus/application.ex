@@ -1,4 +1,4 @@
-defmodule MCPElixirSDK.Application do
+defmodule Plexus.Application do
   @moduledoc false
 
   use Application
@@ -14,7 +14,7 @@ defmodule MCPElixirSDK.Application do
        name: MCP.Transport.StreamableHTTP.LegacySessionManager}
     ]
 
-    opts = [strategy: :one_for_one, name: MCPElixirSDK.Supervisor]
+    opts = [strategy: :one_for_one, name: Plexus.Supervisor]
     Supervisor.start_link(children, opts)
   end
 end

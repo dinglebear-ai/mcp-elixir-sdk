@@ -1,4 +1,4 @@
-# MCP Elixir SDK 2.0 Runtime Models
+# Plexus 2.0 Runtime Models
 
 **Status:** Normative 2.0 target with current defects called out
 **Scope:** OTP ownership, state, concurrency, and failure recovery

@@ -1,11 +1,11 @@
 ---
 date: 2026-08-10 02:16:19 EDT
-repo: git@github.com:jmagar/mcp-elixir-sdk.git
+repo: git@github.com:dinglebear-ai/plexus.git
 branch: main
 head: bf2d4ef8124de342dc7de5a1d3607cd9d2fd2ffa
 working directory: repository root
 worktree: primary repository checkout
-pr: "#1 feat: complete MCP 2.0 dual-protocol SDK (https://github.com/jmagar/mcp-elixir-sdk/pull/1)"
+pr: "#1 feat: complete MCP 2.0 dual-protocol SDK (https://github.com/dinglebear-ai/plexus/pull/1)"
 beads: mcp-elixir-sdk-7yz, mcp-elixir-sdk-7yz.1, mcp-elixir-sdk-7yz.2, mcp-elixir-sdk-7yz.3, mcp-elixir-sdk-7yz.4, mcp-elixir-sdk-7yz.5, mcp-elixir-sdk-7yz.6, mcp-elixir-sdk-7yz.7, mcp-elixir-sdk-7yz.8, mcp-elixir-sdk-7yz.9
 ---
 
@@ -28,7 +28,7 @@ The session turned the fork into a dual-era MCP client/server SDK with OTP super
 5. Added ADRs for immutable handler configuration, consumer-owned subscription supervision, and the absence of a client result cache.
 6. Corrected the protocol scope after the user reaffirmed `2025-11-25` compatibility as a hard requirement; added negotiated downgrade, legacy dispatch, HTTP sessions, callbacks, and dual-era evidence.
 7. Ran repeated Lavra and PR reviews; converted findings into Beads and remediated Phoenix mounting, identity binding, supervision, quotas, TTLs, recovery, SSE streaming, capability truthfulness, validation, and callback pressure.
-8. Created PR #1 on `jmagar/mcp-elixir-sdk`, corrected an accidentally created upstream PR, addressed all hosted Codex review threads, and resolved them.
+8. Created PR #1 on `dinglebear-ai/plexus`, corrected an accidentally created upstream PR, addressed all hosted Codex review threads, and resolved them.
 9. Passed the local 439-test suite, the full `mix precommit` gate, both official protocol-era conformance paths, and the hosted Elixir/OTP matrix.
 10. Merged PR #1 into `main`, synchronized the local checkout, deleted the merged local and remote feature branches, corrected the stale progress ledger, and verified post-merge CI.
 
@@ -258,9 +258,9 @@ The implementation range is baseline `2b34b32` through maintenance commit `bf2d4
 | `mix precommit` | Formatting, compile, tests, Credo, Dialyzer, docs, Hex, audit, dependency, JSON, and diff gates passed |
 | `npx @modelcontextprotocol/conformance ... --requirements 2025-11-25` | 2025 server denominator passed 81/81 |
 | Official 2026 server/client conformance commands | Scored server checks and required client matrix passed |
-| `gh pr view 1 --repo jmagar/mcp-elixir-sdk ...` | Confirmed fork PR open/mergeable/green, later merged |
+| `gh pr view 1 --repo dinglebear-ai/plexus ...` | Confirmed fork PR open/mergeable/green, later merged |
 | `gh api graphql ... resolveReviewThread` | Resolved all four hosted Codex review threads after fixes |
-| `gh pr merge 1 --repo jmagar/mcp-elixir-sdk --merge` | Merged PR #1 as `519835e` |
+| `gh pr merge 1 --repo dinglebear-ai/plexus --merge` | Merged PR #1 as `519835e` |
 | `gh run watch 31360537441 --exit-status` | Post-merge quality, conformance, and three test jobs passed |
 | `git merge-base --is-ancestor origin/codex/mcp-routing-headers origin/main` | Returned 0; proved feature branch was safe to remove |
 | `git push origin --delete codex/mcp-routing-headers` | Removed the merged remote feature branch |
@@ -328,8 +328,8 @@ The implementation range is baseline `2b34b32` through maintenance commit `bf2d4
 
 ## References
 
-- [Fork PR #1](https://github.com/jmagar/mcp-elixir-sdk/pull/1)
-- [Post-merge CI run 31360537441](https://github.com/jmagar/mcp-elixir-sdk/actions/runs/31360537441)
+- [Fork PR #1](https://github.com/dinglebear-ai/plexus/pull/1)
+- [Post-merge CI run 31360537441](https://github.com/dinglebear-ai/plexus/actions/runs/31360537441)
 - [MCP 2025-11-25 specification](https://modelcontextprotocol.io/specification/2025-11-25)
 - [MCP 2026-07-28 specification](https://modelcontextprotocol.io/specification/2026-07-28)
 - `docs/sdk-2.0/specifications.md`

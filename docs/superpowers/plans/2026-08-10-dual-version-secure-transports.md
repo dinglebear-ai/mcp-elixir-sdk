@@ -557,7 +557,7 @@ Expected: no existing Git tag or Hex 2.0 release uses `2.0.0-rc.1`. If occupied,
 
 - [ ] **Step 3: Align version and provenance metadata**
 
-Set `@version`, canonical source URL, package links, ExDoc `source_ref`, changelog heading, and README install example to the exact unused RC coordinate. README uses either Hex `{:mcp_elixir_sdk, "~> 2.0.0-rc.1"}` after publication or the exact Git commit/tag for the unpublished candidate; do not claim Hex availability before publication.
+Set `@version`, canonical source URL, package links, ExDoc `source_ref`, changelog heading, and README install example to the exact unused RC coordinate. README uses either Hex `{:plexus, "~> 2.0.0-rc.1"}` after publication or the exact Git commit/tag for the unpublished candidate; do not claim Hex availability before publication.
 
 - [ ] **Step 4: Build and inspect the package archive**
 

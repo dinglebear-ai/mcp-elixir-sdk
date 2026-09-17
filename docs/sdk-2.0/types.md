@@ -1,4 +1,4 @@
-# MCP Elixir SDK 2.0 Types
+# Plexus 2.0 Types
 
 **Status:** Normative target shapes with current gaps identified
 **Wire source:** MCP `2026-07-28` schema pinned at `5f5440b`, plus the

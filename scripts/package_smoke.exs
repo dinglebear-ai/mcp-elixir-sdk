@@ -105,7 +105,7 @@ defmodule MCP.PackageSmoke do
 
   defp package_temp_root do
     suffix = :crypto.strong_rand_bytes(12) |> Base.url_encode64(padding: false)
-    Path.join(System.tmp_dir!(), "mcp-elixir-sdk-package-smoke-#{suffix}")
+    Path.join(System.tmp_dir!(), "plexus-package-smoke-#{suffix}")
   end
 end
 

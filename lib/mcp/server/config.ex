@@ -306,7 +306,7 @@ defmodule MCP.Server.Config do
 
   defp build_server_info(map) when is_map(map) do
     %Implementation{
-      name: Map.get(map, :name) || Map.get(map, "name", "mcp_elixir_sdk"),
+      name: Map.get(map, :name) || Map.get(map, "name", "plexus"),
       version: Map.get(map, :version) || Map.get(map, "version", "1.0.0")
     }
   end
@@ -409,5 +409,5 @@ defmodule MCP.Server.Config do
     :exit, reason -> {:error, {:handler_init_failed, {:exited, reason}}}
   end
 
-  defp default_info, do: %{name: "mcp_elixir_sdk", version: "1.0.0"}
+  defp default_info, do: %{name: "plexus", version: "1.0.0"}
 end

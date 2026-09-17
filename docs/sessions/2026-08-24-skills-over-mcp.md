@@ -1,11 +1,11 @@
 ---
 date: 2026-08-24 13:00:42 EDT
-repo: git@github.com:jmagar/mcp-elixir-sdk.git
+repo: git@github.com:dinglebear-ai/plexus.git
 branch: session-log/2026-08-24-skills-over-mcp
 head: 2275b68d62c230b6d315b11c87fb79e530c77441
 working directory: /home/jmagar/workspace/mcp-elixir-sdk
 worktree: /tmp/mcp-sdk-session-log.4EeFPJ
-pr: "#4 feat: add SEP-2640 Skills Over MCP extension — https://github.com/jmagar/mcp-elixir-sdk/pull/4"
+pr: "#4 feat: add SEP-2640 Skills Over MCP extension — https://github.com/dinglebear-ai/plexus/pull/4"
 beads: mcp-elixir-sdk-8fb, mcp-elixir-sdk-8fb.1, mcp-elixir-sdk-8fb.2, mcp-elixir-sdk-8fb.3, mcp-elixir-sdk-8fb.4
 ---
 
@@ -186,7 +186,7 @@ Implemented the draft SEP-2640 `io.modelcontextprotocol/skills` extension across
 
 ## References
 
-- [PR #4 — feat: add SEP-2640 Skills Over MCP extension](https://github.com/jmagar/mcp-elixir-sdk/pull/4)
+- [PR #4 — feat: add SEP-2640 Skills Over MCP extension](https://github.com/dinglebear-ai/plexus/pull/4)
 - [Canonical SEP-2640 pull request](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2640)
 - [Experimental Skills extension repository](https://github.com/modelcontextprotocol/experimental-ext-skills)
 - Beads epic `mcp-elixir-sdk-8fb` and children `.1` through `.4`.

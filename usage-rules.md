@@ -1,7 +1,7 @@
-# MCP Elixir SDK — Usage Rules
+# Plexus — Usage Rules
 
 > Condensed, executable guidance for developers and coding agents using the
-> unreleased `mcp_elixir_sdk` 2.0 release candidate. The [README](README.md) and
+> unreleased `plexus` 2.0 release candidate. The [README](README.md) and
 > generated module documentation are the authoritative public references.
 
 ## Supported MCP revisions
@@ -19,8 +19,8 @@ immutable Git commit rather than a branch:
 ```elixir
 def deps do
   [
-    {:mcp_elixir_sdk,
-     git: "https://github.com/jmagar/mcp-elixir-sdk.git",
+    {:plexus,
+     git: "https://github.com/dinglebear-ai/plexus.git",
      ref: "e9c7fb8927de1d54c74ffecd21bfed63ba1a19ef"}
   ]
 end

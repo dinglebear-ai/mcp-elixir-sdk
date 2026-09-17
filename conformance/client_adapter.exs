@@ -1,6 +1,6 @@
 #!/usr/bin/env elixir
 
-{:ok, _applications} = Application.ensure_all_started(:mcp_elixir_sdk)
+{:ok, _applications} = Application.ensure_all_started(:plexus)
 
 defmodule MCP.Conformance.ClientAdapter do
   @moduledoc false
@@ -110,7 +110,7 @@ defmodule MCP.Conformance.ClientAdapter do
         {MCP.Transport.StreamableHTTP.Client,
          url: url, headers: [], security_policy: security_policy},
       protocol_version: protocol_version,
-      client_info: %{name: "mcp_elixir_sdk_conformance", version: "2.0.0-rc.1"},
+      client_info: %{name: "plexus_conformance", version: "2.0.0-rc.1"},
       client_capabilities: %{
         "sampling" => %{},
         "elicitation" => %{},

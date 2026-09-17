@@ -14,7 +14,7 @@ defmodule MCP.Protocol.Messages.DiscoverTest do
     result = %Discover.Result{
       supported_versions: ["2026-07-28"],
       capabilities: %ServerCapabilities{},
-      server_info: %Implementation{name: "mcp_elixir_sdk", version: "2.0.0"},
+      server_info: %Implementation{name: "plexus", version: "2.0.0"},
       instructions: "hello"
     }
 
@@ -26,7 +26,7 @@ defmodule MCP.Protocol.Messages.DiscoverTest do
     assert map["cacheScope"] == "public"
     assert map["instructions"] == "hello"
     assert is_map(map["capabilities"])
-    assert map["_meta"]["io.modelcontextprotocol/serverInfo"]["name"] == "mcp_elixir_sdk"
+    assert map["_meta"]["io.modelcontextprotocol/serverInfo"]["name"] == "plexus"
     # server identity is NOT top-level; supportedVersions replaces protocolVersions
     refute Map.has_key?(map, "serverInfo")
     refute Map.has_key?(map, "protocolVersions")

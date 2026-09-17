@@ -1,13 +1,13 @@
 ---
 date: 2026-08-24 14:38:40 EDT
-repo: git@github.com:jmagar/mcp-elixir-sdk.git
+repo: git@github.com:dinglebear-ai/plexus.git
 branch: main
 head: 3576cdaf8ce622de61c56ff614359ca92a97a0e5
 session id: c0ad640b-57db-4d9c-8640-97be2b719622
 transcript: /home/jmagar/.claude/projects/-home-jmagar-workspace-mcp-elixir-sdk/c0ad640b-57db-4d9c-8640-97be2b719622.jsonl
 working directory: /home/jmagar/workspace/mcp-elixir-sdk
 worktree: /home/jmagar/workspace/mcp-elixir-sdk
-pr: "#6 feat: harden SDK boundaries and add browser interoperability evidence (https://github.com/jmagar/mcp-elixir-sdk/pull/6)"
+pr: "#6 feat: harden SDK boundaries and add browser interoperability evidence (https://github.com/dinglebear-ai/plexus/pull/6)"
 beads: mcp-elixir-sdk-bxw, mcp-elixir-sdk-rn8
 ---
 
@@ -169,7 +169,7 @@ The PR changed 80 files. `A` means created and `M` means modified.
 | `mix hex.audit` | no retired/advisory packages |
 | `node --test conformance/apps_browser_report.test.mjs` | 2 passed |
 | `actionlint .github/workflows/*.yml` | passed |
-| `gh pr checks 6 --repo jmagar/mcp-elixir-sdk` | all required hosted checks passed |
+| `gh pr checks 6 --repo dinglebear-ai/plexus` | all required hosted checks passed |
 | `gh pr merge 6 --merge --delete-branch` | merged as `3576cdaf` |
 
 ## Errors Encountered
@@ -219,11 +219,11 @@ The PR changed 80 files. `A` means created and `M` means modified.
 
 ## References
 
-- PR #6: https://github.com/jmagar/mcp-elixir-sdk/pull/6
-- Merge commit: https://github.com/jmagar/mcp-elixir-sdk/commit/3576cdaf8ce622de61c56ff614359ca92a97a0e5
-- Final reviewed implementation: https://github.com/jmagar/mcp-elixir-sdk/commit/e9c7fb8927de1d54c74ffecd21bfed63ba1a19ef
-- Official Inspector workflow run: https://github.com/jmagar/mcp-elixir-sdk/actions/runs/32762873251
-- Exact-head CI run: https://github.com/jmagar/mcp-elixir-sdk/actions/runs/32762873260
+- PR #6: https://github.com/dinglebear-ai/plexus/pull/6
+- Merge commit: https://github.com/dinglebear-ai/plexus/commit/3576cdaf8ce622de61c56ff614359ca92a97a0e5
+- Final reviewed implementation: https://github.com/dinglebear-ai/plexus/commit/e9c7fb8927de1d54c74ffecd21bfed63ba1a19ef
+- Official Inspector workflow run: https://github.com/dinglebear-ai/plexus/actions/runs/32762873251
+- Exact-head CI run: https://github.com/dinglebear-ai/plexus/actions/runs/32762873260
 
 ## Next Steps
 

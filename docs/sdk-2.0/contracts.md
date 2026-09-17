@@ -1,4 +1,4 @@
-# MCP Elixir SDK 2.0 Boundary Contracts
+# Plexus 2.0 Boundary Contracts
 
 **Status:** Normative 2.0 target; current implementation gaps are tracked in
 [meta-plan.md](meta-plan.md)

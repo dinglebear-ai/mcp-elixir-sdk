@@ -21,7 +21,7 @@ plug =
   MCP.Transport.StreamableHTTP.Plug.new(
     server_mod: MCP.Conformance.AppsBrowserHandler,
     server_opts: [
-      server_info: %{name: "mcp-elixir-sdk-apps-interop", version: "1.0.0"},
+      server_info: %{name: "plexus-apps-interop", version: "1.0.0"},
       extensions: MCP.Apps.extensions()
     ],
     protocol_version: "2026-07-28",

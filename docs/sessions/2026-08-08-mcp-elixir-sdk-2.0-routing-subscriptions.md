@@ -1,6 +1,6 @@
 ---
 date: 2026-08-08 22:53:04 EDT
-repo: git@github.com:jmagar/mcp-elixir-sdk.git
+repo: git@github.com:dinglebear-ai/plexus.git
 branch: codex/mcp-routing-headers
 head: 332235c28423246299b8f837330e35247b43b5d1
 working directory: repository root
