@@ -118,6 +118,23 @@ defmodule MCP.Transport.StreamableHTTPClientTest do
     end
   end
 
+  test "rejects malformed static extra headers before starting", %{url: url} do
+    for headers <- [
+          [{<<255>>, "value"}],
+          [{"bad header", "value"}],
+          [{"x-good", "bad\r\nvalue"}]
+        ] do
+      child_spec =
+        Supervisor.child_spec(
+          {Client, owner: self(), url: url, headers: headers},
+          id: make_ref()
+        )
+
+      assert {:error, {{:invalid_extra_headers, :invalid_header}, _child}} =
+               start_supervised(child_spec)
+    end
+  end
+
   test "preserves non-reserved extra headers", %{url: url} do
     child_spec =
       Supervisor.child_spec(
@@ -161,6 +178,9 @@ defmodule MCP.Transport.StreamableHTTPClientTest do
       {:exit, fn -> exit(:boom) end, {:exit, :boom}},
       {:kill, fn -> Process.exit(self(), :kill) end, {:exit, :killed}},
       {:invalid, fn -> [{"authorization", 42}] end, {:invalid_headers, :invalid_header}},
+      {:invalid_name, fn -> [{<<255>>, "value"}] end, {:invalid_headers, :invalid_header}},
+      {:invalid_value, fn -> [{"authorization", "bad\r\nvalue"}] end,
+       {:invalid_headers, :invalid_header}},
       {:not_a_list, fn -> %{"authorization" => "Bearer nope"} end,
        {:invalid_headers, :not_a_list}},
       {:timeout, fn -> Process.sleep(:infinity) end, :timeout}
@@ -182,6 +202,39 @@ defmodule MCP.Transport.StreamableHTTPClientTest do
       assert Process.alive?(client)
       refute_receive {:captured_request, _headers, ^message}, 50
     end
+  end
+
+  test "slow header_provider work does not block the transport control plane", %{url: url} do
+    test_pid = self()
+
+    provider = fn ->
+      send(test_pid, {:header_provider_waiting, self()})
+
+      receive do
+        :release_provider -> [{"authorization", "Bearer ready"}]
+      end
+    end
+
+    client =
+      start_supervised!(
+        Supervisor.child_spec(
+          {Client,
+           owner: self(), url: url, header_provider: provider, header_provider_timeout: 5_000},
+          id: :nonblocking_header_provider_client
+        )
+      )
+
+    message = %{"jsonrpc" => "2.0", "id" => 41, "method" => "tools/list", "params" => %{}}
+    parent = self()
+    _caller = spawn(fn -> send(parent, {:slow_provider_result, Client.send_message(client, message)}) end)
+
+    assert_receive {:header_provider_waiting, provider_pid}, 1_000
+    _probe = spawn(fn -> send(parent, {:control_plane_probe, Client.legacy_session_valid?(client)}) end)
+    assert_receive {:control_plane_probe, false}, 250
+
+    send(provider_pid, :release_provider)
+    assert_receive {:slow_provider_result, :ok}, 1_000
+    assert_receive {:captured_request, _headers, ^message}, 1_000
   end
 
   test "a header_provider failure does not poison the next request", %{url: url} do
@@ -381,6 +434,78 @@ defmodule MCP.Transport.StreamableHTTPClientTest do
     assert_receive {:legacy_lifecycle_request, "DELETE", delete_headers}, 1_000
     assert header(delete_headers, "authorization") == "Bearer dynamic-3"
     assert header(delete_headers, "accept-encoding") == "identity"
+  end
+
+  test "owner exit cannot kill a detached legacy session DELETE" do
+    bandit =
+      start_supervised!(
+        {Bandit,
+         plug: {__MODULE__.OwnerCleanupPlug, test_pid: self()},
+         ip: {127, 0, 0, 1},
+         port: 0},
+        id: :owner_cleanup_bandit
+      )
+
+    {:ok, {_address, port}} = ThousandIsland.listener_info(bandit)
+    test_pid = self()
+    calls = start_supervised!({Agent, fn -> 0 end})
+
+    provider = fn ->
+      call = Agent.get_and_update(calls, fn n -> {n + 1, n + 1} end)
+
+      if call < 3 do
+        [{"authorization", "Bearer lifecycle-#{call}"}]
+      else
+        send(test_pid, {:owner_cleanup_provider_waiting, self()})
+
+        receive do
+          :release_delete_provider -> [{"authorization", "Bearer lifecycle-delete"}]
+        end
+      end
+    end
+
+    owner_pid = spawn(fn -> Process.sleep(:infinity) end)
+
+    client =
+      start_supervised!(
+        Supervisor.child_spec(
+          {Client,
+           owner: owner_pid,
+           url: "http://127.0.0.1:#{port}/mcp",
+           header_provider: provider,
+           header_provider_timeout: 5_000},
+          id: :owner_cleanup_client,
+          restart: :temporary
+        )
+      )
+
+    initialize = %{
+      "jsonrpc" => "2.0",
+      "id" => 1,
+      "method" => "initialize",
+      "params" => %{
+        "protocolVersion" => "2025-11-25",
+        "capabilities" => %{},
+        "clientInfo" => %{"name" => "client", "version" => "1.0.0"}
+      }
+    }
+
+    assert :ok = Client.send_message(client, initialize)
+    assert_receive {:legacy_captured_request, _headers, ^initialize}, 1_000
+    assert_receive {:owner_cleanup_get, get_handler, _headers}, 1_000
+
+    monitor = Process.monitor(client)
+    Process.exit(owner_pid, :kill)
+
+    assert_receive {:owner_cleanup_provider_waiting, provider_pid}, 1_000
+    assert_receive {:DOWN, ^monitor, :process, ^client, :normal}, 1_000
+
+    send(provider_pid, :release_delete_provider)
+    assert_receive {:owner_cleanup_delete, delete_headers}, 1_000
+    assert header(delete_headers, "authorization") == "Bearer lifecycle-delete"
+    assert header(delete_headers, "accept-encoding") == "identity"
+
+    send(get_handler, :finish_get)
   end
 
   test "legacy initialize binds both session id and negotiated protocol version" do
@@ -888,4 +1013,37 @@ defmodule MCP.Transport.StreamableHTTPClientTest.ConcurrentLegacyInitializePlug 
         Plug.Conn.send_resp(conn, 202, "")
     end
   end
+end
+
+
+defmodule MCP.Transport.StreamableHTTPClientTest.OwnerCleanupPlug do
+  @moduledoc false
+  @behaviour Plug
+
+  @impl true
+  def init(opts), do: opts
+
+  @impl true
+  def call(%Plug.Conn{method: "GET"} = conn, opts) do
+    test_pid = Keyword.fetch!(opts, :test_pid)
+    send(test_pid, {:owner_cleanup_get, self(), conn.req_headers})
+
+    conn =
+      conn
+      |> Plug.Conn.put_resp_content_type("text/event-stream")
+      |> Plug.Conn.send_chunked(200)
+
+    {:ok, conn} = Plug.Conn.chunk(conn, ": connected\n\n")
+
+    receive do
+      :finish_get -> conn
+    end
+  end
+
+  def call(%Plug.Conn{method: "DELETE"} = conn, opts) do
+    send(Keyword.fetch!(opts, :test_pid), {:owner_cleanup_delete, conn.req_headers})
+    Plug.Conn.send_resp(conn, 200, "")
+  end
+
+  def call(conn, opts), do: MCP.Test.LegacySessionCapturePlug.call(conn, opts)
 end
