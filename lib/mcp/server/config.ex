@@ -307,7 +307,7 @@ defmodule MCP.Server.Config do
   defp build_server_info(map) when is_map(map) do
     %Implementation{
       name: Map.get(map, :name) || Map.get(map, "name", "plexus"),
-      version: Map.get(map, :version) || Map.get(map, "version", default_version())
+      version: Map.get(map, :version) || Map.get(map, "version", MCP.Version.current())
     }
   end
 
@@ -409,12 +409,5 @@ defmodule MCP.Server.Config do
     :exit, reason -> {:error, {:handler_init_failed, {:exited, reason}}}
   end
 
-  defp default_info, do: %{name: "plexus", version: default_version()}
-
-  defp default_version do
-    case Application.spec(:plexus, :vsn) do
-      nil -> "2.0.0-rc.1"
-      vsn -> to_string(vsn)
-    end
-  end
+  defp default_info, do: %{name: "plexus", version: MCP.Version.current()}
 end
