@@ -81,7 +81,7 @@ defmodule MCP.Transport.Stdio.Process do
   def handle_call(:close, _from, state) do
     reply_stdout(state.stdout_from)
     state = %{state | stdout_from: nil, pending_stdout_bytes: 0}
-    discovery_deadline = cleanup_discovery_deadline(state.policy.shutdown_timeout)
+    discovery_deadline = cleanup_discovery_deadline()
     identities = cleanup_identities(state, discovery_deadline)
     _ = :exec.send(state.exec_pid, :eof)
     graceful_deadline = cleanup_deadline(state.policy.shutdown_timeout)
@@ -96,7 +96,7 @@ defmodule MCP.Transport.Stdio.Process do
     pending = state.pending_stdout_bytes + byte_size(data)
 
     if pending > state.policy.max_pending_stdout_bytes do
-      discovery_deadline = cleanup_discovery_deadline(state.policy.shutdown_timeout)
+      discovery_deadline = cleanup_discovery_deadline()
       identities = cleanup_identities(state, discovery_deadline)
       graceful_deadline = cleanup_deadline(state.policy.shutdown_timeout)
 
@@ -152,7 +152,7 @@ defmodule MCP.Transport.Stdio.Process do
     # start a fresh bounded TERM/KILL budget. Reusing one deadline for both
     # phases let a /proc scan consume the entire shutdown budget before an
     # escaped child was ever signaled.
-    discovery_deadline = cleanup_discovery_deadline(state.policy.shutdown_timeout)
+    discovery_deadline = cleanup_discovery_deadline()
     identities = marked_processes(state.cleanup_marker, discovery_deadline)
     cleanup_deadline = cleanup_deadline(state.policy.shutdown_timeout)
 
@@ -448,10 +448,11 @@ defmodule MCP.Transport.Stdio.Process do
   end
 
   # Process discovery is security bookkeeping, not part of the graceful TERM
-  # budget. Give /proc a small bounded floor so a caller choosing a tiny
-  # shutdown timeout cannot make already-running descendants undiscoverable.
-  defp cleanup_discovery_deadline(shutdown_timeout),
-    do: cleanup_deadline(max(shutdown_timeout, @cleanup_discovery_timeout))
+  # budget. Give /proc its own small fixed window so a tiny graceful timeout
+  # cannot hide descendants, while a large graceful timeout cannot double the
+  # total close latency before TERM is even sent.
+  defp cleanup_discovery_deadline,
+    do: cleanup_deadline(@cleanup_discovery_timeout)
 
   defp cleanup_deadline(timeout), do: now_ms() + timeout
   defp deadline_expired?(deadline), do: now_ms() >= deadline
