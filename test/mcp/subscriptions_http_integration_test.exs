@@ -163,18 +163,25 @@ defmodule MCP.SubscriptionsHTTPIntegrationTest do
 
     assert {:ok, _acknowledgment} = SubscriptionHandle.next(handle, 1_000)
 
-    for sequence <- 1..100 do
-      assert :ok =
-               SubscriptionPublisher.publish(
-                 context.registry,
-                 :http_test,
-                 Methods.tools_list_changed(),
-                 %{"sequence" => sequence}
-               )
-    end
+    Enum.reduce_while(1..100, :ok, fn sequence, :ok ->
+      case
+        SubscriptionPublisher.publish(
+          context.registry,
+          :http_test,
+          Methods.tools_list_changed(),
+          %{"sequence" => sequence}
+        )
+      do
+        :ok -> {:cont, :ok}
+        {:error, :closed} -> {:halt, :ok}
+        other -> flunk("unexpected publish result during flood: #{inspect(other)}")
+      end
+    end)
 
     # The HTTP stream applies backpressure across several supervised processes.
-    # Wait until the client worker has observed the terminal overflow before
+    # Once overflow reaches the client, the server-side stream can close before
+    # the publisher finishes all 100 sends, so `{:error, :closed}` is a valid
+    # terminal observation here. Wait for the client worker itself before
     # consuming the queue so the assertion is independent of scheduler speed.
     worker = Map.fetch!(handle, :worker)
     assert :ok = await_terminal_subscription(worker, 2_000)
