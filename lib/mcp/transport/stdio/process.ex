@@ -6,6 +6,7 @@ defmodule MCP.Transport.Stdio.Process do
   alias MCP.Transport.Stdio.Signal
 
   @kill_confirmation_timeout 2_000
+  @cleanup_discovery_timeout 500
 
   defstruct [
     :owner,
@@ -80,10 +81,13 @@ defmodule MCP.Transport.Stdio.Process do
   def handle_call(:close, _from, state) do
     reply_stdout(state.stdout_from)
     state = %{state | stdout_from: nil, pending_stdout_bytes: 0}
-    deadline = cleanup_deadline(state.policy.shutdown_timeout)
-    descendants = cleanup_identities(state, deadline)
+    discovery_deadline = cleanup_discovery_deadline(state.policy.shutdown_timeout)
+    identities = cleanup_identities(state, discovery_deadline)
     _ = :exec.send(state.exec_pid, :eof)
-    result = ensure_processes_stopped(:ok, descendants, state.cleanup_marker, deadline)
+    graceful_deadline = cleanup_deadline(state.policy.shutdown_timeout)
+
+    result =
+      ensure_processes_stopped(:ok, identities, state.cleanup_marker, graceful_deadline)
 
     {:stop, :normal, result, %{state | closed?: true}}
   end
@@ -92,14 +96,16 @@ defmodule MCP.Transport.Stdio.Process do
     pending = state.pending_stdout_bytes + byte_size(data)
 
     if pending > state.policy.max_pending_stdout_bytes do
-      deadline = cleanup_deadline(state.policy.shutdown_timeout)
+      discovery_deadline = cleanup_discovery_deadline(state.policy.shutdown_timeout)
+      identities = cleanup_identities(state, discovery_deadline)
+      graceful_deadline = cleanup_deadline(state.policy.shutdown_timeout)
 
       cleanup_result =
         ensure_processes_stopped(
           {:error, {:stdout_backlog_too_large, state.policy.max_pending_stdout_bytes}},
-          cleanup_identities(state, deadline),
+          identities,
           state.cleanup_marker,
-          deadline
+          graceful_deadline
         )
 
       notify_cleanup_result(state, cleanup_result)
@@ -146,7 +152,7 @@ defmodule MCP.Transport.Stdio.Process do
     # start a fresh bounded TERM/KILL budget. Reusing one deadline for both
     # phases let a /proc scan consume the entire shutdown budget before an
     # escaped child was ever signaled.
-    discovery_deadline = cleanup_deadline(state.policy.shutdown_timeout)
+    discovery_deadline = cleanup_discovery_deadline(state.policy.shutdown_timeout)
     identities = marked_processes(state.cleanup_marker, discovery_deadline)
     cleanup_deadline = cleanup_deadline(state.policy.shutdown_timeout)
 
@@ -440,6 +446,12 @@ defmodule MCP.Transport.Stdio.Process do
       wait_until_stopped(identities, deadline, Enum.any?(identities, &process_alive?/1))
     end
   end
+
+  # Process discovery is security bookkeeping, not part of the graceful TERM
+  # budget. Give /proc a small bounded floor so a caller choosing a tiny
+  # shutdown timeout cannot make already-running descendants undiscoverable.
+  defp cleanup_discovery_deadline(shutdown_timeout),
+    do: cleanup_deadline(max(shutdown_timeout, @cleanup_discovery_timeout))
 
   defp cleanup_deadline(timeout), do: now_ms() + timeout
   defp deadline_expired?(deadline), do: now_ms() >= deadline
