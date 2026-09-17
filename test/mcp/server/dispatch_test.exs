@@ -2,6 +2,7 @@ defmodule MCP.Server.DispatchTest do
   use ExUnit.Case, async: true
 
   alias MCP.Protocol.Capabilities.ServerCapabilities
+  alias MCP.Protocol.JSONBudget
   alias MCP.Protocol.Messages.{Notification, Request}
   alias MCP.Protocol.Types.Implementation
   alias MCP.Server.{CallbackExecutor, Dispatch}
@@ -239,6 +240,18 @@ defmodule MCP.Server.DispatchTest do
       {:reply, response} = Dispatch.dispatch(req(method, params), ctx(), config())
       assert response["error"]["code"] == -32_602
     end
+  end
+
+  test "tools/call error without data omits the internal :absent sentinel" do
+    response = call_tool("missing", %{}, nil)
+
+    assert response["error"] == %{
+             "code" => -32_602,
+             "message" => "unknown tool"
+           }
+
+    refute Map.has_key?(response["error"], "data")
+    assert :ok = JSONBudget.check(response, 1_024)
   end
 
   test "resources/read preserves structured handler error data" do

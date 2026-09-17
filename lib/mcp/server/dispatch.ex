@@ -641,9 +641,7 @@ defmodule MCP.Server.Dispatch do
   defp success(id, result), do: %{"jsonrpc" => "2.0", "id" => id, "result" => result}
 
   defp error_response(id, %Error{} = e) do
-    error = %{"code" => e.code, "message" => e.message}
-    error = if e.data, do: Map.put(error, "data", e.data), else: error
-    %{"jsonrpc" => "2.0", "id" => id, "error" => error}
+    %{"jsonrpc" => "2.0", "id" => id, "error" => Error.to_map(e)}
   end
 
   defp target_version(config), do: Map.get(config, :protocol_version, @stateless_protocol_version)

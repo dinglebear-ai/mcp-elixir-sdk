@@ -128,6 +128,21 @@ defmodule MCP.Transport.StreamableHTTPStatelessTest do
     assert hd(call["content"])["text"] == ""
   end
 
+  test "handler error without data remains a bounded correlated JSON-RPC error" do
+    conn =
+      post(
+        opts(),
+        rpc("tools/call", with_meta(%{"name" => "missing", "arguments" => %{}}))
+      )
+
+    body = Jason.decode!(conn.resp_body)
+
+    assert conn.status == 400
+    assert body["id"] == 1
+    assert body["error"] == %{"code" => -32_602, "message" => "unknown tool"}
+    refute Map.has_key?(body["error"], "data")
+  end
+
   test "list/read results carry caching hints (ttlMs/cacheScope)" do
     r = post(opts(), rpc("tools/list", with_meta(%{}))) |> result()
     assert r["ttlMs"] == 0
