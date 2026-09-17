@@ -2,6 +2,7 @@ defmodule MCP.Server.DispatchTest do
   use ExUnit.Case, async: true
 
   alias MCP.Protocol.Capabilities.ServerCapabilities
+  alias MCP.Protocol.JSONBudget
   alias MCP.Protocol.Messages.{Notification, Request}
   alias MCP.Protocol.Types.Implementation
   alias MCP.Server.{CallbackExecutor, Dispatch}
@@ -250,7 +251,7 @@ defmodule MCP.Server.DispatchTest do
            }
 
     refute Map.has_key?(response["error"], "data")
-    assert :ok = MCP.Protocol.JSONBudget.check(response, 1_024)
+    assert :ok = JSONBudget.check(response, 1_024)
   end
 
   test "resources/read preserves structured handler error data" do
