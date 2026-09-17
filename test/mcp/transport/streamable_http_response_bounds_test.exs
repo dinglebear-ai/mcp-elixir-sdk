@@ -117,9 +117,7 @@ defmodule MCP.Transport.StreamableHTTPResponseBoundsTest do
         {Bandit,
          plug:
            {MCP.Test.HTTPResponsePlug,
-            status: 200,
-            body: "{}",
-            response_headers: [{"content-encoding", "gzip"}]},
+            status: 200, body: "{}", response_headers: [{"content-encoding", "gzip"}]},
          ip: {127, 0, 0, 1},
          port: 0},
         id: {MCP.Test.HTTPResponsePlug, make_ref()}
