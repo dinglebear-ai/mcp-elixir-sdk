@@ -127,8 +127,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   events before decode, and enforces connect/receive/request deadlines. It now
   also requests `Accept-Encoding: identity` on POST, legacy SSE, and session
   DELETE traffic and rejects unexpected non-identity `Content-Encoding`
-  before consuming the body. Stdio bounds frames and diagnostics, fails closed
-  on non-protocol stdout, and owns process-group plus descendant cleanup.
+  before consuming the body. Req 0.6.1 compatibility also absorbs Finch 0.22's
+  transient dynamic-pool registration race without enabling general HTTP
+  retries or extending the request deadline. Stdio bounds frames and
+  diagnostics, fails closed on non-protocol stdout, and owns process-group plus
+  descendant cleanup.
 - Skills are transported as untrusted data. The SDK does not execute skill
   instructions, honor `allowed-tools`, infer authorization from capability or
   URI scheme, treat digests as trust, prefetch content, persist approvals, or

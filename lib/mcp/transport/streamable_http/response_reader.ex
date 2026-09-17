@@ -161,24 +161,37 @@ defmodule MCP.Transport.StreamableHTTP.ResponseReader do
 
       remaining_budget ->
         options = clamp_request_timeouts(options, remaining_budget)
+        try_request(options, deadline, retry_delays)
+    end
+  end
 
-        try do
-          Req.request(options)
-        rescue
-          exception ->
-            case {finch_pool_not_available?(exception), retry_delays} do
-              {true, [delay | remaining]} ->
-                if retry_delay_fits?(deadline, delay) do
-                  Process.sleep(delay)
-                  request_with_pool_retry(options, deadline, remaining)
-                else
-                  {:error, :request_timeout}
-                end
+  defp try_request(options, deadline, retry_delays) do
+    Req.request(options)
+  rescue
+    exception ->
+      handle_request_exception(options, deadline, retry_delays, exception, __STACKTRACE__)
+  end
 
-              _other ->
-                reraise exception, __STACKTRACE__
-            end
-        end
+  defp handle_request_exception(options, deadline, [delay | remaining], exception, stacktrace) do
+    if finch_pool_not_available?(exception) do
+      retry_pool_request(options, deadline, remaining, delay)
+    else
+      reraise exception, stacktrace
+    end
+  end
+
+  defp handle_request_exception(_options, _deadline, [], exception, stacktrace) do
+    if finch_pool_not_available?(exception),
+      do: {:error, exception},
+      else: reraise(exception, stacktrace)
+  end
+
+  defp retry_pool_request(options, deadline, remaining, delay) do
+    if retry_delay_fits?(deadline, delay) do
+      Process.sleep(delay)
+      request_with_pool_retry(options, deadline, remaining)
+    else
+      {:error, :request_timeout}
     end
   end
 
