@@ -241,6 +241,18 @@ defmodule MCP.Server.DispatchTest do
     end
   end
 
+  test "tools/call error without data omits the internal :absent sentinel" do
+    response = call_tool("missing", %{}, nil)
+
+    assert response["error"] == %{
+             "code" => -32_602,
+             "message" => "unknown tool"
+           }
+
+    refute Map.has_key?(response["error"], "data")
+    assert :ok = MCP.Protocol.JSONBudget.check(response, 1_024)
+  end
+
   test "resources/read preserves structured handler error data" do
     params = %{"uri" => "mem://missing", "_meta" => meta()}
     {:reply, response} = Dispatch.dispatch(req("resources/read", params), ctx(), config())
