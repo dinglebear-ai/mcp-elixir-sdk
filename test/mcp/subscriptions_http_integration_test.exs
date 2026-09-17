@@ -164,14 +164,12 @@ defmodule MCP.SubscriptionsHTTPIntegrationTest do
     assert {:ok, _acknowledgment} = SubscriptionHandle.next(handle, 1_000)
 
     Enum.reduce_while(1..100, :ok, fn sequence, :ok ->
-      case
-        SubscriptionPublisher.publish(
-          context.registry,
-          :http_test,
-          Methods.tools_list_changed(),
-          %{"sequence" => sequence}
-        )
-      do
+      case SubscriptionPublisher.publish(
+             context.registry,
+             :http_test,
+             Methods.tools_list_changed(),
+             %{"sequence" => sequence}
+           ) do
         :ok -> {:cont, :ok}
         {:error, :closed} -> {:halt, :ok}
         other -> flunk("unexpected publish result during flood: #{inspect(other)}")
