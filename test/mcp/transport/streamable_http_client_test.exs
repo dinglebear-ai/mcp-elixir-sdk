@@ -161,6 +161,8 @@ defmodule MCP.Transport.StreamableHTTPClientTest do
       {:exit, fn -> exit(:boom) end, {:exit, :boom}},
       {:kill, fn -> Process.exit(self(), :kill) end, {:exit, :killed}},
       {:invalid, fn -> [{"authorization", 42}] end, {:invalid_headers, :invalid_header}},
+      {:not_a_list, fn -> %{"authorization" => "Bearer nope"} end,
+       {:invalid_headers, :not_a_list}},
       {:timeout, fn -> Process.sleep(:infinity) end, :timeout}
     ]
 
@@ -228,6 +230,25 @@ defmodule MCP.Transport.StreamableHTTPClientTest do
     message = %{"jsonrpc" => "2.0", "id" => 1, "method" => "tools/list", "params" => %{}}
 
     assert {:error, {:header_provider_failed, {:duplicate_header, "authorization"}}} =
+             Client.send_message(client, message)
+
+    refute_receive {:captured_request, _headers, ^message}, 50
+  end
+
+  test "header_provider rejects duplicate names within one dynamic result", %{url: url} do
+    provider = fn -> [{"x-token", "one"}, {"X-Token", "two"}] end
+
+    client =
+      start_supervised!(
+        Supervisor.child_spec(
+          {Client, owner: self(), url: url, header_provider: provider},
+          id: :duplicate_dynamic_provider_header_client
+        )
+      )
+
+    message = %{"jsonrpc" => "2.0", "id" => 1, "method" => "tools/list", "params" => %{}}
+
+    assert {:error, {:header_provider_failed, {:duplicate_header, "X-Token"}}} =
              Client.send_message(client, message)
 
     refute_receive {:captured_request, _headers, ^message}, 50
@@ -320,7 +341,12 @@ defmodule MCP.Transport.StreamableHTTPClientTest do
       )
 
     {:ok, {_address, port}} = ThousandIsland.listener_info(bandit)
-    provider = fn -> [{"authorization", "Bearer dynamic"}] end
+    counter = start_supervised!({Agent, fn -> 0 end})
+
+    provider = fn ->
+      token = Agent.get_and_update(counter, fn n -> {n + 1, n + 1} end)
+      [{"authorization", "Bearer dynamic-#{token}"}]
+    end
 
     client =
       start_supervised!(
@@ -343,17 +369,17 @@ defmodule MCP.Transport.StreamableHTTPClientTest do
 
     assert :ok = Client.send_message(client, initialize)
     assert_receive {:legacy_captured_request, post_headers, ^initialize}
-    assert header(post_headers, "authorization") == "Bearer dynamic"
+    assert header(post_headers, "authorization") == "Bearer dynamic-1"
     assert header(post_headers, "accept-encoding") == "identity"
     assert_receive {:mcp_message, %{"id" => 1}}
 
     assert_receive {:legacy_lifecycle_request, "GET", get_headers}, 1_000
-    assert header(get_headers, "authorization") == "Bearer dynamic"
+    assert header(get_headers, "authorization") == "Bearer dynamic-2"
     assert header(get_headers, "accept-encoding") == "identity"
 
     assert :ok = Client.close(client)
     assert_receive {:legacy_lifecycle_request, "DELETE", delete_headers}, 1_000
-    assert header(delete_headers, "authorization") == "Bearer dynamic"
+    assert header(delete_headers, "authorization") == "Bearer dynamic-3"
     assert header(delete_headers, "accept-encoding") == "identity"
   end
 

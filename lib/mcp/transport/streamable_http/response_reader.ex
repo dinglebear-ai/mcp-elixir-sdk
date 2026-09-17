@@ -3,6 +3,8 @@ defmodule MCP.Transport.StreamableHTTP.ResponseReader do
 
   alias MCP.Transport.StreamableHTTP.SecurityPolicy
 
+  @pool_start_retry_delays [1, 2, 4, 8, 16]
+
   @spec request(keyword(), SecurityPolicy.t()) ::
           {:ok, Req.Response.t(), binary()}
           | {:stream, Req.Response.t()}
@@ -28,7 +30,7 @@ defmodule MCP.Transport.StreamableHTTP.ResponseReader do
         into: :self
       )
 
-    case Req.request(options) do
+    case request_with_pool_retry(options) do
       {:ok, %Req.Response{status: status} = response} when status in 300..399 ->
         _ = Req.cancel_async_response(response)
 
@@ -144,6 +146,30 @@ defmodule MCP.Transport.StreamableHTTP.ResponseReader do
         {:error, reason}
     end
   end
+
+  # Req 0.6.1 permits Finch 0.22, whose dynamically started pools can briefly
+  # report :pool_not_available while their workers are still registering. Finch
+  # raises before dispatch in that state, so this narrow retry cannot duplicate
+  # an HTTP request and keeps the SDK's advertised Req 0.6.1 compatibility real.
+  defp request_with_pool_retry(options),
+    do: request_with_pool_retry(options, @pool_start_retry_delays)
+
+  defp request_with_pool_retry(options, retry_delays) do
+    Req.request(options)
+  rescue
+    exception ->
+      case {finch_pool_not_available?(exception), retry_delays} do
+        {true, [delay | remaining]} ->
+          Process.sleep(delay)
+          request_with_pool_retry(options, remaining)
+
+        _other ->
+          reraise exception, __STACKTRACE__
+      end
+  end
+
+  defp finch_pool_not_available?(%{__struct__: Finch.Error, reason: :pool_not_available}), do: true
+  defp finch_pool_not_available?(_exception), do: false
 
   defp min_timeout(timeout, other), do: min(timeout, other)
 
