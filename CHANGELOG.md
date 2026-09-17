@@ -28,6 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The official November server denominator is 81/81; its compatibility ledger
   records exact client scenarios, while regression tests explicitly reject the
   unsupported `2025-06-18` revision.
+- Streamable HTTP supports a bounded per-request `:header_provider` for
+  rotating bearer/OAuth credentials. Provider failures are request-local,
+  reserved SDK headers cannot be overridden, and duplicate static/provider
+  headers fail closed instead of emitting ambiguous credentials.
 - Draft SEP-2640 Skills extension support, pinned to PR head
   `753b9f2be43e07fdd070e535d75f190cff14beea` as reviewed on 2026-08-24:
   lossless static/dynamic skill entries, `skills/list`, `skills/get`, optional
@@ -74,6 +78,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `MCP.Server.Connection` replaces the removed per-session `MCP.Server` API.
 - The request deadline now covers transport send, schema refresh, and MRTR
   resolver work. Callback failures are isolated to their request.
+- `tools/list` responses are deterministic by tool name by default. Servers
+  that intentionally curate handler order can opt out with `tool_order: :handler`;
+  ordering remains page-local and does not rewrite pagination semantics.
 
 ### Fixed
 
@@ -117,9 +124,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Request metadata, routing headers, extension values, cache policy, queue
   bounds, and tool routing annotations are validated at their boundaries.
 - Streamable HTTP rejects redirects and unsafe URLs, bounds bodies and SSE
-  events before decode, and enforces connect/receive/request deadlines. Stdio
-  bounds frames and diagnostics, fails closed on non-protocol stdout, and owns
-  process-group plus descendant cleanup.
+  events before decode, and enforces connect/receive/request deadlines. It now
+  also requests `Accept-Encoding: identity` on POST, legacy SSE, and session
+  DELETE traffic and rejects unexpected non-identity `Content-Encoding`
+  before consuming the body. Stdio bounds frames and diagnostics, fails closed
+  on non-protocol stdout, and owns process-group plus descendant cleanup.
 - Skills are transported as untrusted data. The SDK does not execute skill
   instructions, honor `allowed-tools`, infer authorization from capability or
   URI scheme, treat digests as trust, prefetch content, persist approvals, or

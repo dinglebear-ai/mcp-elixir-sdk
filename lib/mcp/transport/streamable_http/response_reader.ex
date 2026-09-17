@@ -36,7 +36,9 @@ defmodule MCP.Transport.StreamableHTTP.ResponseReader do
          {:redirect_rejected, status, sanitized_location(header(response.headers, "location"))}}
 
       {:ok, %Req.Response{} = response} when stream? ->
-        {:stream, response}
+        with :ok <- validate_content_encoding(response) do
+          {:stream, response}
+        end
 
       {:ok, %Req.Response{} = response} ->
         # Compression is disabled, so the wire and decoded bodies are the same
@@ -44,7 +46,8 @@ defmodule MCP.Transport.StreamableHTTP.ResponseReader do
         # accepting a decoded-limit option that has no effect.
         response_limit = SecurityPolicy.response_limit(policy)
 
-        with :ok <- validate_content_length(response, response_limit),
+        with :ok <- validate_content_encoding(response),
+             :ok <- validate_content_length(response, response_limit),
              {:ok, body} <-
                consume_messages(
                  response,
@@ -164,6 +167,24 @@ defmodule MCP.Transport.StreamableHTTP.ResponseReader do
       else: :receive_timeout
   end
 
+  defp validate_content_encoding(response) do
+    codings =
+      response.headers
+      |> header_values("content-encoding")
+      |> Enum.flat_map(&String.split(&1, ","))
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == "" or String.downcase(&1) == "identity"))
+
+    case codings do
+      [] ->
+        :ok
+
+      unexpected ->
+        _ = Req.cancel_async_response(response)
+        {:error, {:unexpected_content_encoding, Enum.join(unexpected, ", ")}}
+    end
+  end
+
   defp validate_content_length(response, limit) do
     case header(response.headers, "content-length") do
       nil ->
@@ -184,10 +205,15 @@ defmodule MCP.Transport.StreamableHTTP.ResponseReader do
   end
 
   defp header(headers, name) do
-    Enum.find_value(headers, fn {key, values} ->
-      if String.downcase(key) == name do
-        values |> List.wrap() |> List.first()
-      end
+    headers
+    |> header_values(name)
+    |> List.first()
+  end
+
+  defp header_values(headers, name) do
+    headers
+    |> Enum.flat_map(fn {key, values} ->
+      if String.downcase(key) == name, do: List.wrap(values), else: []
     end)
   end
 

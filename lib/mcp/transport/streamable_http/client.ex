@@ -12,6 +12,10 @@ defmodule MCP.Transport.StreamableHTTP.Client do
       `{:mcp_transport_closed, reason}` messages
     * `:url` (required) — the MCP endpoint URL (e.g., "http://localhost:8080/mcp")
     * `:headers` — extra HTTP headers to include on all requests
+    * `:header_provider` — optional zero-arity function evaluated for every request;
+      returns a list of `{header, value}` pairs for rotating credentials
+    * `:header_provider_timeout` — maximum provider runtime in milliseconds
+      (default: 5,000); provider failure fails only that request
     * `:protocol_version` — MCP protocol version (default: the stateless core's)
     * `:security_policy` — validated request, URL, deadline, and body limits
 
@@ -46,6 +50,7 @@ defmodule MCP.Transport.StreamableHTTP.Client do
   @behaviour MCP.Transport
 
   @protocol_version Revision.preferred()
+  @default_header_provider_timeout 5_000
   @default_legacy_sse_retry_limit 3
   @default_legacy_sse_retry_backoff 50
   @default_legacy_sse_retry_max_backoff 1_000
@@ -58,6 +63,8 @@ defmodule MCP.Transport.StreamableHTTP.Client do
     :protocol_version,
     :session_id,
     :extra_headers,
+    :header_provider,
+    :header_provider_timeout,
     :task_supervisor,
     :legacy_sse_task,
     :legacy_sse_ref,
@@ -136,9 +143,15 @@ defmodule MCP.Transport.StreamableHTTP.Client do
     url = Keyword.fetch!(opts, :url)
     protocol_version = Keyword.get(opts, :protocol_version, @protocol_version)
     extra_headers = Keyword.get(opts, :headers, [])
+    header_provider = Keyword.get(opts, :header_provider)
+
+    header_provider_timeout =
+      Keyword.get(opts, :header_provider_timeout, @default_header_provider_timeout)
 
     with {:ok, security_policy} <- security_policy(opts),
          {:ok, endpoint} <- SecurityPolicy.validate_url(security_policy, url),
+         :ok <- validate_header_provider(header_provider),
+         :ok <- validate_header_provider_timeout(header_provider_timeout),
          nil <- reserved_extra_header(extra_headers),
          {:ok, task_supervisor} <- Task.Supervisor.start_link() do
       state = %__MODULE__{
@@ -148,6 +161,8 @@ defmodule MCP.Transport.StreamableHTTP.Client do
         security_policy: security_policy,
         protocol_version: protocol_version,
         extra_headers: extra_headers,
+        header_provider: header_provider,
+        header_provider_timeout: header_provider_timeout,
         task_supervisor: task_supervisor,
         legacy_sse_retry_limit:
           Keyword.get(opts, :legacy_sse_retry_limit, @default_legacy_sse_retry_limit),
@@ -408,6 +423,17 @@ defmodule MCP.Transport.StreamableHTTP.Client do
     end
   end
 
+  defp validate_header_provider(nil), do: :ok
+  defp validate_header_provider(provider) when is_function(provider, 0), do: :ok
+
+  defp validate_header_provider(provider),
+    do: {:error, {:invalid_header_provider, provider}}
+
+  defp validate_header_provider_timeout(timeout) when is_integer(timeout) and timeout > 0, do: :ok
+
+  defp validate_header_provider_timeout(timeout),
+    do: {:error, {:invalid_header_provider_timeout, timeout}}
+
   defp start_post_task(state, from, message, headers) do
     transport = self()
 
@@ -622,15 +648,17 @@ defmodule MCP.Transport.StreamableHTTP.Client do
 
   defp build_headers(state, message, opts) do
     with {:ok, custom_headers} <-
-           custom_routing_headers(message, Keyword.get(opts, :routing_headers, [])) do
+           custom_routing_headers(message, Keyword.get(opts, :routing_headers, [])),
+         {:ok, provider_headers} <- provider_headers(state) do
       {:ok,
        [
          {"content-type", "application/json"},
          {"accept", "application/json, text/event-stream"},
+         {"accept-encoding", "identity"},
          {"mcp-protocol-version", request_protocol_version(message, state.protocol_version)}
        ] ++
          session_headers(state) ++
-         routing_headers(message) ++ custom_headers ++ state.extra_headers}
+         routing_headers(message) ++ custom_headers ++ state.extra_headers ++ provider_headers}
     end
   end
 
@@ -683,6 +711,93 @@ defmodule MCP.Transport.StreamableHTTP.Client do
 
   defp custom_routing_headers(_message, _descriptors), do: {:ok, []}
 
+  defp provider_headers(%{header_provider: nil}), do: {:ok, []}
+
+  defp provider_headers(
+         %{
+           header_provider: provider,
+           header_provider_timeout: timeout,
+           task_supervisor: supervisor
+         } = state
+       ) do
+    task =
+      Task.Supervisor.async_nolink(supervisor, fn ->
+        safely_call_header_provider(provider)
+      end)
+
+    case Task.yield(task, timeout) do
+      {:ok, {:ok, headers}} ->
+        validate_provider_headers(headers, Map.get(state, :extra_headers, []))
+
+      {:ok, {:error, reason}} ->
+        provider_error(reason)
+
+      {:exit, reason} ->
+        provider_error({:exit, reason})
+
+      nil ->
+        _ = Task.shutdown(task, :brutal_kill)
+        provider_error(:timeout)
+    end
+  end
+
+  defp safely_call_header_provider(provider) do
+    {:ok, provider.()}
+  catch
+    kind, reason -> {:error, {kind, reason}}
+  end
+
+  defp validate_provider_headers(headers, existing_headers) when is_list(headers) do
+    cond do
+      not Enum.all?(headers, &valid_header?/1) ->
+        provider_error({:invalid_headers, :invalid_header})
+
+      name = reserved_extra_header(headers) ->
+        provider_error({:reserved_header, name})
+
+      name = duplicate_header_name(headers, existing_headers) ->
+        provider_error({:duplicate_header, name})
+
+      true ->
+        {:ok, headers}
+    end
+  end
+
+  defp validate_provider_headers(_headers, _existing_headers),
+    do: provider_error({:invalid_headers, :not_a_list})
+
+  defp duplicate_header_name(headers, existing_headers) do
+    seen =
+      existing_headers
+      |> Enum.flat_map(fn
+        {name, _value} when is_binary(name) -> [String.downcase(name)]
+        _header -> []
+      end)
+      |> MapSet.new()
+
+    Enum.reduce_while(headers, {:ok, seen}, fn {name, _value}, {:ok, seen} ->
+      normalized = String.downcase(name)
+
+      if MapSet.member?(seen, normalized) do
+        {:halt, {:duplicate, name}}
+      else
+        {:cont, {:ok, MapSet.put(seen, normalized)}}
+      end
+    end)
+    |> case do
+      {:duplicate, name} -> name
+      {:ok, _seen} -> nil
+    end
+  end
+
+  defp valid_header?({name, value}) when is_binary(name) and is_binary(value), do: true
+  defp valid_header?(_header), do: false
+
+  defp provider_error(reason) do
+    Logger.warning("MCP StreamableHTTP Client: header_provider failed; request rejected")
+    {:error, {:header_provider_failed, reason}}
+  end
+
   defp encode_header_value(value) when is_binary(value) do
     if plain_header_value?(value) do
       value
@@ -717,6 +832,7 @@ defmodule MCP.Transport.StreamableHTTP.Client do
     normalized in [
       "content-type",
       "accept",
+      "accept-encoding",
       "mcp-protocol-version",
       "mcp-method",
       "mcp-name",
@@ -936,20 +1052,29 @@ defmodule MCP.Transport.StreamableHTTP.Client do
   defp session_headers(%{session_id: session_id}), do: [{"mcp-session-id", session_id}]
 
   defp terminate_legacy_session(state) do
-    headers = [
+    base_headers = [
+      {"accept-encoding", "identity"},
       {"mcp-protocol-version", state.protocol_version},
       {"mcp-session-id", state.session_id}
     ]
 
-    case ResponseReader.request(
-           [method: :delete, url: state.endpoint, headers: headers],
-           state.security_policy
-         ) do
-      {:ok, %Req.Response{status: status}, _body} when status in [200, 202, 204, 404] ->
-        :ok
+    case provider_headers(state) do
+      {:ok, provider_headers} ->
+        headers = base_headers ++ Map.get(state, :extra_headers, []) ++ provider_headers
 
-      {:ok, %Req.Response{status: status}, _body} ->
-        {:error, {:session_delete_failed, status}}
+        case ResponseReader.request(
+               [method: :delete, url: state.endpoint, headers: headers],
+               state.security_policy
+             ) do
+          {:ok, %Req.Response{status: status}, _body} when status in [200, 202, 204, 404] ->
+            :ok
+
+          {:ok, %Req.Response{status: status}, _body} ->
+            {:error, {:session_delete_failed, status}}
+
+          {:error, reason} ->
+            {:error, {:session_delete_failed, reason}}
+        end
 
       {:error, reason} ->
         {:error, {:session_delete_failed, reason}}
@@ -966,7 +1091,11 @@ defmodule MCP.Transport.StreamableHTTP.Client do
       endpoint: state.endpoint,
       protocol_version: state.protocol_version,
       session_id: state.session_id,
-      security_policy: state.security_policy
+      security_policy: state.security_policy,
+      extra_headers: state.extra_headers,
+      header_provider: state.header_provider,
+      header_provider_timeout: state.header_provider_timeout,
+      task_supervisor: state.task_supervisor
     }
 
     case Task.Supervisor.start_child(state.task_supervisor, fn -> run_session_cleanup(cleanup) end) do
@@ -996,6 +1125,16 @@ defmodule MCP.Transport.StreamableHTTP.Client do
     %{state | session_id: nil, legacy_sse_task: nil, legacy_sse_ref: nil}
   end
 
+  defp header_context(state) do
+    %{
+      extra_headers: Map.get(state, :extra_headers, []),
+      header_provider: Map.get(state, :header_provider),
+      header_provider_timeout:
+        Map.get(state, :header_provider_timeout, @default_header_provider_timeout),
+      task_supervisor: Map.fetch!(state, :task_supervisor)
+    }
+  end
+
   defp start_legacy_sse_listener(%{legacy_sse_task: task} = state) when is_pid(task), do: state
 
   defp start_legacy_sse_listener(state) do
@@ -1009,7 +1148,7 @@ defmodule MCP.Transport.StreamableHTTP.Client do
             state.endpoint,
             state.session_id,
             state.protocol_version,
-            state.extra_headers,
+            header_context(state),
             state.legacy_sse_retry_limit,
             state.legacy_sse_retry_backoff,
             state.legacy_sse_retry_max_backoff,
@@ -1029,24 +1168,31 @@ defmodule MCP.Transport.StreamableHTTP.Client do
          url,
          session_id,
          protocol_version,
-         extra_headers,
+         header_context,
          retries_left,
          backoff,
          max_backoff,
          security_policy
        ) do
-    headers =
-      [
-        {"accept", "text/event-stream"},
-        {"mcp-session-id", session_id},
-        {"mcp-protocol-version", protocol_version}
-      ] ++ extra_headers
+    base_headers = [
+      {"accept", "text/event-stream"},
+      {"accept-encoding", "identity"},
+      {"mcp-session-id", session_id},
+      {"mcp-protocol-version", protocol_version}
+    ]
 
     result =
-      case ResponseReader.request(
-             [method: :get, url: url, headers: headers, stream: true],
-             security_policy
-           ) do
+      with {:ok, provider_headers} <- provider_headers(header_context) do
+        headers = base_headers ++ header_context.extra_headers ++ provider_headers
+
+        ResponseReader.request(
+          [method: :get, url: url, headers: headers, stream: true],
+          security_policy
+        )
+      end
+
+    result =
+      case result do
         {:stream, %Req.Response{status: 200} = response} ->
           consume_legacy_sse_stream(
             owner,
@@ -1077,7 +1223,7 @@ defmodule MCP.Transport.StreamableHTTP.Client do
           url,
           session_id,
           protocol_version,
-          extra_headers,
+          header_context,
           retries_left,
           backoff,
           max_backoff,
@@ -1095,7 +1241,7 @@ defmodule MCP.Transport.StreamableHTTP.Client do
           url,
           session_id,
           protocol_version,
-          extra_headers,
+          header_context,
           retries_left - 1,
           min(backoff * 2, max_backoff),
           max_backoff,
@@ -1125,7 +1271,7 @@ defmodule MCP.Transport.StreamableHTTP.Client do
          url,
          session_id,
          protocol_version,
-         headers,
+         header_context,
          retries,
          backoff,
          max,
@@ -1138,7 +1284,7 @@ defmodule MCP.Transport.StreamableHTTP.Client do
       url,
       session_id,
       protocol_version,
-      headers,
+      header_context,
       retries - 1,
       min(backoff * 2, max),
       max,

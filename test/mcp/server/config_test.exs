@@ -55,6 +55,17 @@ defmodule MCP.Server.ConfigTest do
     end
   end
 
+  test "defaults tools/list ordering to name and accepts explicit handler order" do
+    assert {:ok, %{tool_order: :name}} = Config.build(EchoHandler, [])
+    assert {:ok, %{tool_order: :name}} = Config.build(EchoHandler, tool_order: :name)
+    assert {:ok, %{tool_order: :handler}} = Config.build(EchoHandler, tool_order: :handler)
+
+    for invalid <- [:alphabetical, "name", nil, 42] do
+      assert Config.build(EchoHandler, tool_order: invalid) ==
+               {:error, {:invalid_tool_order, invalid}}
+    end
+  end
+
   test "advertises list changes only when subscription delivery is enabled" do
     assert {:ok, %{capabilities: capabilities}} = Config.build(StatelessHandler, [])
     assert capabilities.tools.list_changed == nil

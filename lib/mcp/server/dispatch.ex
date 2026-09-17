@@ -142,6 +142,7 @@ defmodule MCP.Server.Dispatch do
       [cursor],
       fn
         {:ok, tools, next_cursor} ->
+          tools = order_tools(tools, config)
           cacheable(list_result("tools", tools, next_cursor), config)
       end,
       id
@@ -610,6 +611,19 @@ defmodule MCP.Server.Dispatch do
   end
 
   # --- Result/response helpers ---
+
+  defp order_tools(tools, config) when is_list(tools) do
+    case Map.get(config, :tool_order, :name) do
+      :handler -> tools
+      :name -> Enum.sort_by(tools, &tool_sort_key/1)
+    end
+  end
+
+  defp order_tools(tools, _config), do: tools
+
+  defp tool_sort_key(%{"name" => name}) when is_binary(name), do: {0, name}
+  defp tool_sort_key(%{name: name}) when is_binary(name), do: {0, name}
+  defp tool_sort_key(_tool), do: {1, ""}
 
   defp list_result(key, items, next_cursor) do
     base = %{key => items}

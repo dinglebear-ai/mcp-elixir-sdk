@@ -19,6 +19,7 @@ defmodule MCP.Server.Config do
         instructions: String.t() | nil,
         protocol_version: String.t(),
         cache_defaults: {non_neg_integer(), String.t()},
+        tool_order: :name | :handler,
         skills_callback_timeout: pos_integer(),
         handler_callback_timeout: pos_integer(),
         handler_callback_supervisor: GenServer.server(),
@@ -75,6 +76,7 @@ defmodule MCP.Server.Config do
           instructions: String.t() | nil,
           protocol_version: String.t(),
           cache_defaults: {non_neg_integer(), String.t()},
+          tool_order: :name | :handler,
           skills_callback_timeout: pos_integer(),
           handler_callback_timeout: pos_integer(),
           handler_callback_supervisor: GenServer.server(),
@@ -98,6 +100,9 @@ defmodule MCP.Server.Config do
       (`tools/list`, `resources/list`, `resources/read`, etc. via
       `CacheableResult`, SEP-2549). Defaults to `{0, "public"}` — **no-store**,
       so nothing is cached and there is no cross-principal cache exposure.
+    * `:tool_order` — ordering policy for each `tools/list` response. `:name`
+      (default) sorts the page deterministically by tool name; `:handler`
+      preserves the handler's exact order.
 
   > #### Security — cache scope on identity-dependent results {: .warning}
   >
@@ -122,6 +127,7 @@ defmodule MCP.Server.Config do
          :ok <- validate_skills_extension(handler_module, extensions),
          {:ok, cache_defaults} <-
            validate_cache_defaults(Keyword.get(opts, :cache_defaults, {0, "public"})),
+         {:ok, tool_order} <- validate_tool_order(Keyword.get(opts, :tool_order, :name)),
          {:ok, skills_callback_timeout} <-
            validate_skills_callback_timeout(
              Keyword.get(opts, :skills_callback_timeout, @default_skills_callback_timeout)
@@ -154,6 +160,7 @@ defmodule MCP.Server.Config do
          instructions: Keyword.get(opts, :instructions),
          protocol_version: Dispatch.protocol_version(),
          cache_defaults: cache_defaults,
+         tool_order: tool_order,
          skills_callback_timeout: skills_callback_timeout,
          handler_callback_timeout: handler_callback_timeout,
          handler_callback_supervisor:
@@ -174,6 +181,9 @@ defmodule MCP.Server.Config do
         {:error, reason}
 
       {:error, {:invalid_cache_defaults, _value} = reason} ->
+        {:error, reason}
+
+      {:error, {:invalid_tool_order, _value} = reason} ->
         {:error, reason}
 
       {:error, {:invalid_skills_extension, _reason} = reason} ->
@@ -317,6 +327,9 @@ defmodule MCP.Server.Config do
   end
 
   defp validate_cache_defaults(value), do: {:error, {:invalid_cache_defaults, value}}
+
+  defp validate_tool_order(order) when order in [:name, :handler], do: {:ok, order}
+  defp validate_tool_order(order), do: {:error, {:invalid_tool_order, order}}
 
   defp validate_skills_extension(_handler_module, nil), do: :ok
 
