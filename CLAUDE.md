@@ -1,18 +1,18 @@
-# MCP Elixir SDK - Claude CLI Instructions
+# Plexus - Claude CLI Instructions
 
 ## Project Overview
 
 Elixir SDK for the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP). Standalone library providing both MCP **client** and **server** with pluggable transports. Supported protocol versions: **2026-07-28** (preferred, stateless) and **2025-11-25** (stateful compatibility).
 
-**Hex package name:** `mcp_elixir_sdk` — published as v1.0.0.
-**GitHub repo:** `mcp-elixir-sdk` (matches `mcp-go-sdk`, `mcp-python-sdk` naming).
+**Hex package name:** `plexus` — pre-release line `2.0.0-rc.1`.
+**GitHub repo:** `plexus` (`dinglebear-ai/plexus` canonical slug).
 **Local directory:** still `/workspace/elixir_code/mcp_ex/` (not renamed).
 **Public modules:** `MCP.*` namespace (unchanged).
 
 MCP is an open protocol that enables standardized integration between LLM applications and external data sources and tools. It uses JSON-RPC 2.0 over pluggable transports (stdio, Streamable HTTP).
 
 **Related packages**:
-- `adk_ex` at `/workspace/elixir_code/adk_ex/` — Elixir ADK (Agent Development Kit). Will use `mcp_elixir_sdk` client via an `ADK.Tool.McpToolset` adapter.
+- `adk_ex` at `/workspace/elixir_code/adk_ex/` — Elixir ADK (Agent Development Kit). Will use the `plexus` client via an `ADK.Tool.McpToolset` adapter.
 - `adk_ex_ecto` at `/workspace/elixir_code/adk_ex_ecto/` — Ecto-backed sessions for ADK.
 
 ## Quick Start
