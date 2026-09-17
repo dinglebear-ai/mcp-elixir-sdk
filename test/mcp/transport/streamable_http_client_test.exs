@@ -226,10 +226,15 @@ defmodule MCP.Transport.StreamableHTTPClientTest do
 
     message = %{"jsonrpc" => "2.0", "id" => 41, "method" => "tools/list", "params" => %{}}
     parent = self()
-    _caller = spawn(fn -> send(parent, {:slow_provider_result, Client.send_message(client, message)}) end)
+
+    _caller =
+      spawn(fn -> send(parent, {:slow_provider_result, Client.send_message(client, message)}) end)
 
     assert_receive {:header_provider_waiting, provider_pid}, 1_000
-    _probe = spawn(fn -> send(parent, {:control_plane_probe, Client.legacy_session_valid?(client)}) end)
+
+    _probe =
+      spawn(fn -> send(parent, {:control_plane_probe, Client.legacy_session_valid?(client)}) end)
+
     assert_receive {:control_plane_probe, false}, 250
 
     send(provider_pid, :release_provider)
@@ -440,9 +445,7 @@ defmodule MCP.Transport.StreamableHTTPClientTest do
     bandit =
       start_supervised!(
         {Bandit,
-         plug: {__MODULE__.OwnerCleanupPlug, test_pid: self()},
-         ip: {127, 0, 0, 1},
-         port: 0},
+         plug: {__MODULE__.OwnerCleanupPlug, test_pid: self()}, ip: {127, 0, 0, 1}, port: 0},
         id: :owner_cleanup_bandit
       )
 
@@ -1014,7 +1017,6 @@ defmodule MCP.Transport.StreamableHTTPClientTest.ConcurrentLegacyInitializePlug 
     end
   end
 end
-
 
 defmodule MCP.Transport.StreamableHTTPClientTest.OwnerCleanupPlug do
   @moduledoc false

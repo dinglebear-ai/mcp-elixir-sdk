@@ -723,9 +723,7 @@ defmodule MCP.Transport.StreamableHTTP.Client do
 
   defp provider_headers(%{header_provider: nil}), do: {:ok, []}
 
-  defp provider_headers(
-         %{header_provider: provider, header_provider_timeout: timeout} = state
-       ) do
+  defp provider_headers(%{header_provider: provider, header_provider_timeout: timeout} = state) do
     parent = self()
     ref = make_ref()
 
