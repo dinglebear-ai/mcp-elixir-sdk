@@ -2,7 +2,7 @@ defmodule Plexus.MixProject do
   use Mix.Project
 
   @version "2.0.0-rc.1"
-  @source_url "https://github.com/dinglebear-ai/plexus"
+  @source_url "https://github.com/dinglebear-ai/mcp-elixir-sdk"
 
   def project do
     [
@@ -164,9 +164,10 @@ defmodule Plexus.MixProject do
       {:elixir_uuid, "~> 1.2"},
       {:erlexec, "~> 2.3", runtime: false},
 
-      # Optional: Streamable HTTP transport
-      {:req, ">= 0.6.1 and < 0.8.0", optional: true},
-      {:plug, "~> 1.16", optional: true},
+      # Bundled HTTP modules reference Req and Plug structs at compile time.
+      {:req, ">= 0.6.1 and < 0.8.0"},
+      {:plug, "~> 1.16"},
+      # Consumers choose their HTTP server; the SDK does not require Bandit.
       {:bandit, "~> 1.12.5", optional: true},
 
       # Dev/test
