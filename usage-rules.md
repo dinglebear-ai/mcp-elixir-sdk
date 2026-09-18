@@ -20,15 +20,17 @@ immutable Git commit rather than a branch:
 def deps do
   [
     {:plexus,
-     git: "https://github.com/dinglebear-ai/plexus.git",
-     ref: "e9c7fb8927de1d54c74ffecd21bfed63ba1a19ef"}
+     git: "https://github.com/dinglebear-ai/mcp-elixir-sdk.git",
+     ref: "4dfeb0276a04e234a297d4cf7d9047d95134d583"}
   ]
 end
 ```
 
-Streamable HTTP requires the optional `Req`, `Plug`, and `Bandit`
-dependencies. Stdio is Unix-only because the required `erlexec` dependency
-uses a NIF that does not build on Windows.
+The bundled HTTP modules require `Req` and `Plug`; both are transitive
+dependencies. `Bandit` remains optional: add `{:bandit, "~> 1.12.5"}` when
+using the server examples, or use another Plug-compatible server. Stdio is
+Unix-only because the required `erlexec` dependency uses a NIF that does not
+build on Windows.
 
 ## Client
 

@@ -5,7 +5,7 @@
 Elixir SDK for the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP). Standalone library providing both MCP **client** and **server** with pluggable transports. Supported protocol versions: **2026-07-28** (preferred, stateless) and **2025-11-25** (stateful compatibility).
 
 **Hex package name:** `plexus` — pre-release line `2.0.0-rc.1`.
-**GitHub repo:** `plexus` (`dinglebear-ai/plexus` canonical slug).
+**GitHub repo:** `dinglebear-ai/mcp-elixir-sdk` until the planned `dinglebear-ai/plexus` rename is completed and verified. Keep installation and source links fetchable during this transition.
 **Local directory:** still `/workspace/elixir_code/mcp_ex/` (not renamed).
 **Public modules:** `MCP.*` namespace (unchanged).
 

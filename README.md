@@ -52,16 +52,21 @@ current `main` commit):
 def deps do
   [
     {:plexus,
-     git: "https://github.com/dinglebear-ai/plexus.git",
-     ref: "e9c7fb8927de1d54c74ffecd21bfed63ba1a19ef"}
+     git: "https://github.com/dinglebear-ai/mcp-elixir-sdk.git",
+     ref: "4dfeb0276a04e234a297d4cf7d9047d95134d583"}
   ]
 end
 ```
 
-No published production coordinate is currently advertised.
+This snapshot already contains the `:plexus` OTP application. The repository
+slug remains `mcp-elixir-sdk` until the separately coordinated rename to
+`dinglebear-ai/plexus` is completed and verified. A repository rename is not
+required to evaluate Plexus, and this snapshot is not a production release.
 
-Streamable HTTP uses the optional `Req`, `Plug`, and `Bandit` dependencies. `Req`
-is supported across `>= 0.6.1 and < 0.8.0`. Req 0.6.1 is the security floor;
+The bundled HTTP modules require `Req` and `Plug`, so both are installed
+automatically. `Bandit` remains optional: add `{:bandit, "~> 1.12.5"}` to your
+application to run the HTTP server examples, or use your existing Plug-compatible
+server. `Req` is supported across `>= 0.6.1 and < 0.8.0`. Req 0.6.1 is the security floor;
 earlier releases are affected by CVE-2026-49755.
 
 **Platform support: Unix only.** `erlexec`, which supervises stdio subprocesses in

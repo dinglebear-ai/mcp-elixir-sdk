@@ -36,6 +36,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `Req` and `Plug` are required transitive dependencies because bundled HTTP
+  modules expand their structs during compilation. Previously, a consumer that
+  depended only on the SDK failed to compile. `Bandit` remains optional and
+  must be added explicitly by applications using the HTTP server examples.
+- Rebranded the package and OTP application from `:mcp_elixir_sdk` to `:plexus`,
+  with `Plexus.Application` and `Plexus.Supervisor` as runtime identities. Update
+  dependency and explicit application declarations; the old application name
+  is not retained as an alias. Public `MCP.*` modules remain unchanged.
+- Package smoke now boots isolated consumer projects from both the unpacked
+  artifact and the exact immutable Git dependency advertised in the README,
+  checking application identity, version, protocol roundtrip, and quickstart.
 - Server callback families are now atomic at configuration time: partial tools,
   resources, or prompts implementations return
   `{:invalid_callback_family, family, missing_callback}` instead of advertising
