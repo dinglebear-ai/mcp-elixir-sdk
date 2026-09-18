@@ -104,8 +104,12 @@ scope. Do not replace the pin with `latest` in release evidence.
 The legacy `sse-retry` scenario remains a partial, release-blocking client
 result: pinned harness `0.2.0-alpha.11` negotiates `2025-03-26`, which is
 outside the SDK's supported revision set. `elixir
-scripts/validate_conformance_ledgers.exs` enforces the exact scenario status
-and release-blocker reason. CI wraps server denominators in ten-
+scripts/validate_conformance_ledgers.exs` validates the fixed legacy denominator,
+check counts, honest statuses, and release-blocker reason. It does not require
+the ledger to remain incomplete forever. `--json` emits machine-readable
+readiness, and `--require-ready` rejects non-passing required records as a
+release prerequisite. Even a ready ledger still requires fresh candidate
+evidence; a successful subset of CI scenarios is not release qualification. CI wraps server denominators in ten-
 minute limits and client scenarios in five-minute limits, then uploads all
 per-scenario output plus the adapter log as the 14-day
 `mcp-core-conformance` artifact, including on failure.

@@ -94,6 +94,20 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: mix deps.get
       - run: mix compile --warnings-as-errors
+      - name: Report conformance release prerequisites
+        run: |
+          set -euo pipefail
+          evidence_dir="${RUNNER_TEMP}/mcp-conformance"
+          mkdir -p "${evidence_dir}"
+          elixir scripts/validate_conformance_ledgers.exs --json \
+            | tee "${evidence_dir}/ledger-readiness.json"
+          jq -r '"### Conformance release prerequisites\n\nLedger readiness: **" +
+            .ledgerReadiness + "**. Fresh candidate evidence is still required.\n",
+            (.blockers[] | "- " + .)' "${evidence_dir}/ledger-readiness.json" \
+            >>"${GITHUB_STEP_SUMMARY}"
+          if jq -e '.ledgerReadiness == "blocked"' "${evidence_dir}/ledger-readiness.json" >/dev/null; then
+            printf '%s\n' '::warning title=Conformance release prerequisites::Recorded blockers remain. Passing selected scenarios does not qualify a release.'
+          fi
       - name: Server and client conformance
         run: |
           set -euo pipefail
@@ -160,7 +174,7 @@ jobs:
               --spec-version 2025-11-25 2>&1 | tee "${evidence_dir}/client-2025-${scenario}.log"
           done
 
-          find "${evidence_dir}" -type f -name '*.log' -print0 \
+          find "${evidence_dir}" -type f \( -name '*.log' -o -name 'ledger-readiness.json' \) -print0 \
             | sort -z \
             | xargs -0 shasum -a 256 >"${evidence_dir}/SHA256SUMS"
           jq -n \
@@ -168,8 +182,13 @@ jobs:
             --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --rawfile checksums "${evidence_dir}/SHA256SUMS" \
             --slurpfile legacy_ledger conformance/compatibility-2025-11-25.json \
+            --slurpfile readiness "${evidence_dir}/ledger-readiness.json" \
             '{schemaVersion: 1, commit: $commit, generatedAt: $generated_at,
               executedScenariosStatus: "passed",
+              ledgerReadiness: $readiness[0].ledgerReadiness,
+              releaseReadiness: (if $readiness[0].ledgerReadiness == "blocked" then "blocked" else "unverified" end),
+              freshCandidateEvidenceRequired: true,
+              blockers: $readiness[0].blockers,
               legacyClientStatus: $legacy_ledger[0].client.status,
               releaseBlocker: $legacy_ledger[0].client.releaseBlocker,
               checksums: ($checksums | split("\n") | map(select(length > 0)))}' \
