@@ -59,8 +59,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   default) for encoded JSON and SSE results. Oversized outbound transport
   messages return `{:message_too_large, limit}`; oversized server results fail
   closed with HTTP 500 / JSON-RPC `-32603` and `response_too_large` metadata.
-- Legacy HTTP client session cleanup now runs under the transport task
-  supervisor and logs both task-start and DELETE failures.
+- Legacy HTTP owner-exit session cleanup runs in a detached, bounded task so
+  transport shutdown cannot kill its DELETE request; DELETE failures are logged.
+  Explicit close still waits for the security-policy-bounded DELETE result.
 - The legacy HTTP session manager now initializes sessions in supervised tasks
   after atomic capacity reservation and uses endpoint, process, owner, and
   expiration indexes instead of full-table lifecycle scans.
@@ -84,6 +85,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Cancelling an HTTP caller now reaps its blocked dynamic header provider and
+  frees the request slot without preventing subsequent requests.
+- Detached legacy session cleanup uses the `Task.start/1` return contract,
+  removing an unreachable error clause rejected by Elixir 1.20 compilation.
 - SSE parsing recognises `\r\n\r\n` event delimiters. CRLF-terminated streams
   previously yielded no events and were eventually rejected as oversized.
 - Stdout frames buffered at a frame-turn boundary are delivered when the

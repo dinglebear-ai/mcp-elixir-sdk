@@ -242,6 +242,52 @@ defmodule MCP.Transport.StreamableHTTPClientTest do
     assert_receive {:captured_request, _headers, ^message}, 1_000
   end
 
+  test "caller cancellation reaps a blocked header_provider", %{url: url} do
+    test_pid = self()
+
+    provider = fn ->
+      send(test_pid, {:blocked_header_provider, self()})
+
+      receive do
+        :release_provider -> [{"authorization", "Bearer recovered"}]
+      end
+    end
+
+    client =
+      start_supervised!(
+        Supervisor.child_spec(
+          {Client,
+           owner: self(), url: url, header_provider: provider, header_provider_timeout: 60_000},
+          id: :cancelled_header_provider_client
+        )
+      )
+
+    message = %{"jsonrpc" => "2.0", "id" => 42, "method" => "tools/list", "params" => %{}}
+    caller = spawn(fn -> Client.send_message(client, message) end)
+
+    assert_receive {:blocked_header_provider, provider_pid}, 1_000
+    caller_ref = Process.monitor(caller)
+    provider_ref = Process.monitor(provider_pid)
+
+    Process.exit(caller, :kill)
+
+    assert_receive {:DOWN, ^caller_ref, :process, ^caller, :killed}, 1_000
+    assert_receive {:DOWN, ^provider_ref, :process, ^provider_pid, _reason}, 1_000
+    assert Process.alive?(client)
+    assert map_size(:sys.get_state(client).post_tasks) == 0
+    refute_receive {:captured_request, _headers, ^message}, 50
+
+    replacement = %{message | "id" => 43}
+    next_call = Task.async(fn -> Client.send_message(client, replacement) end)
+    assert_receive {:blocked_header_provider, replacement_provider}, 1_000
+    send(replacement_provider, :release_provider)
+
+    assert :ok = Task.await(next_call)
+    assert_receive {:captured_request, headers, ^replacement}, 1_000
+    assert header(headers, "authorization") == "Bearer recovered"
+    refute_receive {:captured_request, _headers, ^message}, 50
+  end
+
   test "a header_provider failure does not poison the next request", %{url: url} do
     state = start_supervised!({Agent, fn -> :fail end})
 
@@ -1022,6 +1068,8 @@ defmodule MCP.Transport.StreamableHTTPClientTest.OwnerCleanupPlug do
   @moduledoc false
   @behaviour Plug
 
+  alias MCP.Test.LegacySessionCapturePlug
+
   @impl true
   def init(opts), do: opts
 
@@ -1047,5 +1095,5 @@ defmodule MCP.Transport.StreamableHTTPClientTest.OwnerCleanupPlug do
     Plug.Conn.send_resp(conn, 200, "")
   end
 
-  def call(conn, opts), do: MCP.Test.LegacySessionCapturePlug.call(conn, opts)
+  def call(conn, opts), do: LegacySessionCapturePlug.call(conn, opts)
 end

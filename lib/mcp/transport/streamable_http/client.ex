@@ -724,30 +724,42 @@ defmodule MCP.Transport.StreamableHTTP.Client do
   defp provider_headers(%{header_provider: nil}), do: {:ok, []}
 
   defp provider_headers(%{header_provider: provider, header_provider_timeout: timeout} = state) do
-    parent = self()
-    ref = make_ref()
+    case Task.Supervisor.start_link() do
+      {:ok, supervisor} ->
+        run_header_provider(supervisor, provider, timeout, state)
 
-    {pid, monitor} =
-      spawn_monitor(fn ->
-        send(parent, {ref, safely_call_header_provider(provider)})
+      {:error, reason} ->
+        provider_error({:supervisor_start_failed, reason})
+    end
+  end
+
+  defp run_header_provider(supervisor, provider, timeout, state) do
+    task =
+      Task.Supervisor.async_nolink(supervisor, fn ->
+        safely_call_header_provider(provider)
       end)
 
-    receive do
-      {^ref, {:ok, headers}} ->
-        Process.demonitor(monitor, [:flush])
-        validate_provider_headers(headers, Map.get(state, :extra_headers, []))
+    try do
+      case Task.yield(task, timeout) do
+        {:ok, {:ok, headers}} ->
+          validate_provider_headers(headers, Map.get(state, :extra_headers, []))
 
-      {^ref, {:error, reason}} ->
-        Process.demonitor(monitor, [:flush])
-        provider_error(reason)
+        {:ok, {:error, reason}} ->
+          provider_error(reason)
 
-      {:DOWN, ^monitor, :process, ^pid, reason} ->
-        provider_error({:exit, reason})
+        {:exit, reason} ->
+          provider_error({:exit, reason})
+
+        nil ->
+          _ = Task.shutdown(task, :brutal_kill)
+          provider_error(:timeout)
+      end
     after
-      timeout ->
-        Process.demonitor(monitor, [:flush])
-        Process.exit(pid, :kill)
-        provider_error(:timeout)
+      # The invocation-local supervisor is linked to the waiting request task so
+      # request cancellation automatically reaps a blocked provider. Unlink it
+      # before an orderly stop because the transport GenServer traps exits.
+      Process.unlink(supervisor)
+      if Process.alive?(supervisor), do: Supervisor.stop(supervisor, :normal)
     end
   end
 
@@ -1143,14 +1155,7 @@ defmodule MCP.Transport.StreamableHTTP.Client do
     # This task must outlive the transport when its owner disappears. The
     # transport-owned Task.Supervisor is linked to this client and exits with it,
     # so putting cleanup there can silently kill the session DELETE mid-flight.
-    case Task.start(fn -> run_session_cleanup(cleanup) end) do
-      {:ok, _pid} ->
-        :ok
-
-      {:error, reason} ->
-        Logger.warning("MCP session DELETE task failed to start: #{inspect(reason)}")
-    end
-
+    {:ok, _pid} = Task.start(fn -> run_session_cleanup(cleanup) end)
     :ok
   end
 
