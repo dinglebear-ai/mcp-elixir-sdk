@@ -28,6 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The official November server denominator is 81/81; its compatibility ledger
   records exact client scenarios, while regression tests explicitly reject the
   unsupported `2025-06-18` revision.
+- Streamable HTTP supports a bounded per-request `:header_provider` for
+  rotating bearer/OAuth credentials. Provider failures are request-local,
+  reserved SDK headers cannot be overridden, and duplicate static/provider
+  headers fail closed instead of emitting ambiguous credentials.
 - Draft SEP-2640 Skills extension support, pinned to PR head
   `753b9f2be43e07fdd070e535d75f190cff14beea` as reviewed on 2026-08-24:
   lossless static/dynamic skill entries, `skills/list`, `skills/get`, optional
@@ -55,8 +59,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   default) for encoded JSON and SSE results. Oversized outbound transport
   messages return `{:message_too_large, limit}`; oversized server results fail
   closed with HTTP 500 / JSON-RPC `-32603` and `response_too_large` metadata.
-- Legacy HTTP client session cleanup now runs under the transport task
-  supervisor and logs both task-start and DELETE failures.
+- Legacy HTTP owner-exit session cleanup runs in a detached, bounded task so
+  transport shutdown cannot kill its DELETE request; DELETE failures are logged.
+  Explicit close still waits for the security-policy-bounded DELETE result.
 - The legacy HTTP session manager now initializes sessions in supervised tasks
   after atomic capacity reservation and uses endpoint, process, owner, and
   expiration indexes instead of full-table lifecycle scans.
@@ -74,9 +79,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `MCP.Server.Connection` replaces the removed per-session `MCP.Server` API.
 - The request deadline now covers transport send, schema refresh, and MRTR
   resolver work. Callback failures are isolated to their request.
+- `tools/list` responses are deterministic by tool name by default. Servers
+  that intentionally curate handler order can opt out with `tool_order: :handler`;
+  ordering remains page-local and does not rewrite pagination semantics.
 
 ### Fixed
 
+- Cancelling an HTTP caller now reaps its blocked dynamic header provider and
+  frees the request slot without preventing subsequent requests.
+- Detached legacy session cleanup uses the `Task.start/1` return contract,
+  removing an unreachable error clause rejected by Elixir 1.20 compilation.
 - SSE parsing recognises `\r\n\r\n` event delimiters. CRLF-terminated streams
   previously yielded no events and were eventually rejected as oversized.
 - Stdout frames buffered at a frame-turn boundary are delivered when the
@@ -117,9 +129,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Request metadata, routing headers, extension values, cache policy, queue
   bounds, and tool routing annotations are validated at their boundaries.
 - Streamable HTTP rejects redirects and unsafe URLs, bounds bodies and SSE
-  events before decode, and enforces connect/receive/request deadlines. Stdio
-  bounds frames and diagnostics, fails closed on non-protocol stdout, and owns
-  process-group plus descendant cleanup.
+  events before decode, and enforces connect/receive/request deadlines. It now
+  also requests `Accept-Encoding: identity` on POST, legacy SSE, and session
+  DELETE traffic and rejects unexpected non-identity `Content-Encoding`
+  before consuming the body. Req 0.6.1 compatibility also absorbs Finch 0.22's
+  transient dynamic-pool registration race without enabling general HTTP
+  retries or extending the request deadline. Stdio bounds frames and
+  diagnostics, fails closed on non-protocol stdout, and owns process-group plus
+  descendant cleanup.
 - Skills are transported as untrusted data. The SDK does not execute skill
   instructions, honor `allowed-tools`, infer authorization from capability or
   URI scheme, treat digests as trust, prefetch content, persist approvals, or

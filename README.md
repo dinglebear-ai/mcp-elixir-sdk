@@ -106,6 +106,22 @@ Each operation has one end-to-end deadline covering transport work, schema
 refresh, and any MRTR resolver invocation. Cache hints are returned to the
 caller but results are never cached by the SDK.
 
+For rotating bearer or OAuth credentials, configure the Streamable HTTP
+transport with a zero-arity `:header_provider`. It is evaluated for each
+outbound request, including legacy SSE and session cleanup, and is bounded by
+`:header_provider_timeout` (5,000 ms by default):
+
+```elixir
+transport:
+  {MCP.Transport.StreamableHTTP.Client,
+   url: "https://mcp.example.test/mcp",
+   header_provider: fn -> [{"authorization", "Bearer #{current_token()}"}] end}
+```
+
+Do not configure the same header statically and dynamically; collisions fail
+closed. SDK-owned protocol/routing headers, including `Accept-Encoding`, cannot
+be supplied by the provider.
+
 ## MCP Apps
 
 MCP Apps support is opt-in and targets stable SEP-1865. Enable the extension on
@@ -246,6 +262,12 @@ finite deadline and shared admission limit. Configure these through
 stable internal-error message `handler callback timed out`; exhausted admission
 produces `handler capacity reached`. Timed-out tasks are terminated before their
 capacity is released, and subsequent requests remain serviceable.
+
+`tools/list` pages are sorted deterministically by tool name by default. Pass
+`tool_order: :handler` to `MCP.Server.Config.build/2` or through the server's
+configuration options when the handler intentionally owns presentation order.
+The policy applies independently to each returned page and does not alter
+cursors or pagination.
 
 ### Skills extension security boundary
 

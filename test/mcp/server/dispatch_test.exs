@@ -11,6 +11,26 @@ defmodule MCP.Server.DispatchTest do
 
   @version "2026-07-28"
 
+  defmodule OrderingHandler do
+    @behaviour MCP.Server.Handler
+
+    @impl true
+    def init(_opts), do: {:ok, %{}}
+
+    @impl true
+    def handle_list_tools(_cursor, _ctx, _state) do
+      {:ok,
+       [
+         %{"name" => "zeta", "inputSchema" => %{"type" => "object"}},
+         %{"name" => "alpha", "inputSchema" => %{"type" => "object"}},
+         %{"name" => "middle", "inputSchema" => %{"type" => "object"}}
+       ], nil}
+    end
+
+    @impl true
+    def handle_call_tool(_name, _arguments, _ctx, _state), do: {:ok, []}
+  end
+
   defp config do
     {:ok, state} = StatelessHandler.init([])
 
@@ -44,6 +64,26 @@ defmodule MCP.Server.DispatchTest do
   end
 
   defp tool_text(resp), do: resp["result"]["content"] |> hd() |> Map.get("text")
+
+  test "tools/list sorts each response by tool name by default" do
+    cfg = %{config() | handler_module: OrderingHandler, handler_state: %{}}
+    {:reply, response} = Dispatch.dispatch(req("tools/list", %{"_meta" => meta()}), ctx(), cfg)
+
+    assert Enum.map(response["result"]["tools"], & &1["name"]) == ["alpha", "middle", "zeta"]
+  end
+
+  test "tools/list can preserve explicit handler ordering" do
+    cfg =
+      Map.merge(config(), %{
+        handler_module: OrderingHandler,
+        handler_state: %{},
+        tool_order: :handler
+      })
+
+    {:reply, response} = Dispatch.dispatch(req("tools/list", %{"_meta" => meta()}), ctx(), cfg)
+
+    assert Enum.map(response["result"]["tools"], & &1["name"]) == ["zeta", "alpha", "middle"]
+  end
 
   # --- MC-1: per-request context reaches the callback ---
 

@@ -6,13 +6,18 @@ defmodule MCP.Test.LegacySessionCapturePlug do
   def init(opts), do: opts
 
   @impl true
-  def call(%Plug.Conn{method: "GET"} = conn, _opts) do
+  def call(%Plug.Conn{method: "GET"} = conn, opts) do
+    send(Keyword.fetch!(opts, :test_pid), {:legacy_lifecycle_request, "GET", conn.req_headers})
+
     conn
     |> Plug.Conn.put_resp_content_type("text/event-stream")
     |> Plug.Conn.send_resp(200, ": connected\n\n")
   end
 
-  def call(%Plug.Conn{method: "DELETE"} = conn, _opts), do: Plug.Conn.send_resp(conn, 200, "")
+  def call(%Plug.Conn{method: "DELETE"} = conn, opts) do
+    send(Keyword.fetch!(opts, :test_pid), {:legacy_lifecycle_request, "DELETE", conn.req_headers})
+    Plug.Conn.send_resp(conn, 200, "")
+  end
 
   def call(conn, opts) do
     {:ok, body, conn} = Plug.Conn.read_body(conn)

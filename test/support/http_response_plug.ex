@@ -10,6 +10,11 @@ defmodule MCP.Test.HTTPResponsePlug do
   def call(conn, opts) do
     {:ok, _body, conn} = Plug.Conn.read_body(conn)
 
+    conn =
+      Enum.reduce(Keyword.get(opts, :response_headers, []), conn, fn {name, value}, conn ->
+        Plug.Conn.put_resp_header(conn, name, value)
+      end)
+
     conn
     |> Plug.Conn.put_resp_content_type(Keyword.get(opts, :content_type, "application/json"))
     |> Plug.Conn.send_resp(

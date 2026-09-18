@@ -26,6 +26,7 @@ defmodule MCP.Transport.StreamableHTTPClientTest do
 
     assert header(headers, "mcp-method") == "tools/list"
     assert header(headers, "mcp-name") == nil
+    assert header(headers, "accept-encoding") == "identity"
   end
 
   test "rejects oversized outbound requests before network I/O", %{url: url} do
@@ -99,6 +100,7 @@ defmodule MCP.Transport.StreamableHTTPClientTest do
     reserved_names = [
       "Content-Type",
       "ACCEPT",
+      "Accept-Encoding",
       "MCP-Protocol-Version",
       "Mcp-Method",
       "mcp-NAME",
@@ -116,6 +118,23 @@ defmodule MCP.Transport.StreamableHTTPClientTest do
     end
   end
 
+  test "rejects malformed static extra headers before starting", %{url: url} do
+    for headers <- [
+          [{<<255>>, "value"}],
+          [{"bad header", "value"}],
+          [{"x-good", "bad\r\nvalue"}]
+        ] do
+      child_spec =
+        Supervisor.child_spec(
+          {Client, owner: self(), url: url, headers: headers},
+          id: make_ref()
+        )
+
+      assert {:error, {{:invalid_extra_headers, :invalid_header}, _child}} =
+               start_supervised(child_spec)
+    end
+  end
+
   test "preserves non-reserved extra headers", %{url: url} do
     child_spec =
       Supervisor.child_spec(
@@ -127,6 +146,415 @@ defmodule MCP.Transport.StreamableHTTPClientTest do
     headers = send_and_capture(client, "tools/list", %{})
 
     assert header(headers, "x-tenant") == "acme"
+  end
+
+  test "evaluates header_provider for every request so credentials can rotate", %{url: url} do
+    counter = start_supervised!({Agent, fn -> 0 end})
+
+    provider = fn ->
+      token = Agent.get_and_update(counter, fn n -> {n + 1, n + 1} end)
+      [{"authorization", "Bearer token-#{token}"}]
+    end
+
+    client =
+      start_supervised!(
+        Supervisor.child_spec(
+          {Client, owner: self(), url: url, header_provider: provider},
+          id: :rotating_header_provider_client
+        )
+      )
+
+    first = send_and_capture(client, "tools/list", %{})
+    second = send_and_capture(client, "tools/list", %{})
+
+    assert header(first, "authorization") == "Bearer token-1"
+    assert header(second, "authorization") == "Bearer token-2"
+  end
+
+  test "header_provider failures are request-local and bounded", %{url: url} do
+    cases = [
+      {:raise, fn -> raise "boom" end, {:error, %RuntimeError{message: "boom"}}},
+      {:throw, fn -> throw(:boom) end, {:throw, :boom}},
+      {:exit, fn -> exit(:boom) end, {:exit, :boom}},
+      {:kill, fn -> Process.exit(self(), :kill) end, {:exit, :killed}},
+      {:invalid, fn -> [{"authorization", 42}] end, {:invalid_headers, :invalid_header}},
+      {:invalid_name, fn -> [{<<255>>, "value"}] end, {:invalid_headers, :invalid_header}},
+      {:invalid_value, fn -> [{"authorization", "bad\r\nvalue"}] end,
+       {:invalid_headers, :invalid_header}},
+      {:not_a_list, fn -> %{"authorization" => "Bearer nope"} end,
+       {:invalid_headers, :not_a_list}},
+      {:timeout, fn -> Process.sleep(:infinity) end, :timeout}
+    ]
+
+    for {name, provider, expected} <- cases do
+      client =
+        start_supervised!(
+          Supervisor.child_spec(
+            {Client,
+             owner: self(), url: url, header_provider: provider, header_provider_timeout: 25},
+            id: {:header_provider_failure_client, name}
+          )
+        )
+
+      message = %{"jsonrpc" => "2.0", "id" => 1, "method" => "tools/list", "params" => %{}}
+
+      assert {:error, {:header_provider_failed, ^expected}} = Client.send_message(client, message)
+      assert Process.alive?(client)
+      refute_receive {:captured_request, _headers, ^message}, 50
+    end
+  end
+
+  test "slow header_provider work does not block the transport control plane", %{url: url} do
+    test_pid = self()
+
+    provider = fn ->
+      send(test_pid, {:header_provider_waiting, self()})
+
+      receive do
+        :release_provider -> [{"authorization", "Bearer ready"}]
+      end
+    end
+
+    client =
+      start_supervised!(
+        Supervisor.child_spec(
+          {Client,
+           owner: self(), url: url, header_provider: provider, header_provider_timeout: 5_000},
+          id: :nonblocking_header_provider_client
+        )
+      )
+
+    message = %{"jsonrpc" => "2.0", "id" => 41, "method" => "tools/list", "params" => %{}}
+    parent = self()
+
+    _caller =
+      spawn(fn -> send(parent, {:slow_provider_result, Client.send_message(client, message)}) end)
+
+    assert_receive {:header_provider_waiting, provider_pid}, 1_000
+
+    _probe =
+      spawn(fn -> send(parent, {:control_plane_probe, Client.legacy_session_valid?(client)}) end)
+
+    assert_receive {:control_plane_probe, false}, 250
+
+    send(provider_pid, :release_provider)
+    assert_receive {:slow_provider_result, :ok}, 1_000
+    assert_receive {:captured_request, _headers, ^message}, 1_000
+  end
+
+  test "caller cancellation reaps a blocked header_provider", %{url: url} do
+    test_pid = self()
+
+    provider = fn ->
+      send(test_pid, {:blocked_header_provider, self()})
+
+      receive do
+        :release_provider -> [{"authorization", "Bearer recovered"}]
+      end
+    end
+
+    client =
+      start_supervised!(
+        Supervisor.child_spec(
+          {Client,
+           owner: self(), url: url, header_provider: provider, header_provider_timeout: 60_000},
+          id: :cancelled_header_provider_client
+        )
+      )
+
+    message = %{"jsonrpc" => "2.0", "id" => 42, "method" => "tools/list", "params" => %{}}
+    caller = spawn(fn -> Client.send_message(client, message) end)
+
+    assert_receive {:blocked_header_provider, provider_pid}, 1_000
+    caller_ref = Process.monitor(caller)
+    provider_ref = Process.monitor(provider_pid)
+
+    Process.exit(caller, :kill)
+
+    assert_receive {:DOWN, ^caller_ref, :process, ^caller, :killed}, 1_000
+    assert_receive {:DOWN, ^provider_ref, :process, ^provider_pid, _reason}, 1_000
+    assert Process.alive?(client)
+    assert map_size(:sys.get_state(client).post_tasks) == 0
+    refute_receive {:captured_request, _headers, ^message}, 50
+
+    replacement = %{message | "id" => 43}
+    next_call = Task.async(fn -> Client.send_message(client, replacement) end)
+    assert_receive {:blocked_header_provider, replacement_provider}, 1_000
+    send(replacement_provider, :release_provider)
+
+    assert :ok = Task.await(next_call)
+    assert_receive {:captured_request, headers, ^replacement}, 1_000
+    assert header(headers, "authorization") == "Bearer recovered"
+    refute_receive {:captured_request, _headers, ^message}, 50
+  end
+
+  test "a header_provider failure does not poison the next request", %{url: url} do
+    state = start_supervised!({Agent, fn -> :fail end})
+
+    provider = fn ->
+      case Agent.get_and_update(state, fn current -> {current, :ok} end) do
+        :fail -> raise "first request fails"
+        :ok -> [{"authorization", "Bearer recovered"}]
+      end
+    end
+
+    client =
+      start_supervised!(
+        Supervisor.child_spec(
+          {Client, owner: self(), url: url, header_provider: provider},
+          id: :recovering_header_provider_client
+        )
+      )
+
+    first = %{"jsonrpc" => "2.0", "id" => 1, "method" => "tools/list", "params" => %{}}
+    second = %{first | "id" => 2}
+
+    assert {:error, {:header_provider_failed, {:error, %RuntimeError{}}}} =
+             Client.send_message(client, first)
+
+    assert :ok = Client.send_message(client, second)
+    assert_receive {:captured_request, headers, ^second}
+    assert header(headers, "authorization") == "Bearer recovered"
+  end
+
+  test "header_provider cannot duplicate a static header", %{url: url} do
+    provider = fn -> [{"authorization", "Bearer dynamic"}] end
+
+    child_spec =
+      Supervisor.child_spec(
+        {Client,
+         owner: self(),
+         url: url,
+         headers: [{"Authorization", "Bearer static"}],
+         header_provider: provider},
+        id: :duplicate_provider_header_client
+      )
+
+    client = start_supervised!(child_spec)
+    message = %{"jsonrpc" => "2.0", "id" => 1, "method" => "tools/list", "params" => %{}}
+
+    assert {:error, {:header_provider_failed, {:duplicate_header, "authorization"}}} =
+             Client.send_message(client, message)
+
+    refute_receive {:captured_request, _headers, ^message}, 50
+  end
+
+  test "header_provider rejects duplicate names within one dynamic result", %{url: url} do
+    provider = fn -> [{"x-token", "one"}, {"X-Token", "two"}] end
+
+    client =
+      start_supervised!(
+        Supervisor.child_spec(
+          {Client, owner: self(), url: url, header_provider: provider},
+          id: :duplicate_dynamic_provider_header_client
+        )
+      )
+
+    message = %{"jsonrpc" => "2.0", "id" => 1, "method" => "tools/list", "params" => %{}}
+
+    assert {:error, {:header_provider_failed, {:duplicate_header, "X-Token"}}} =
+             Client.send_message(client, message)
+
+    refute_receive {:captured_request, _headers, ^message}, 50
+  end
+
+  test "header_provider cannot override SDK-owned headers", %{url: url} do
+    provider = fn -> [{"Accept-Encoding", "gzip"}] end
+
+    client =
+      start_supervised!(
+        Supervisor.child_spec(
+          {Client, owner: self(), url: url, header_provider: provider},
+          id: :reserved_provider_header_client
+        )
+      )
+
+    message = %{"jsonrpc" => "2.0", "id" => 1, "method" => "tools/list", "params" => %{}}
+
+    assert {:error, {:header_provider_failed, {:reserved_header, "Accept-Encoding"}}} =
+             Client.send_message(client, message)
+
+    refute_receive {:captured_request, _headers, ^message}, 50
+  end
+
+  test "rejects an unexpected response content encoding before decoding the body" do
+    body = %{"jsonrpc" => "2.0", "id" => 1, "result" => %{"tools" => []}}
+
+    bandit =
+      start_supervised!(
+        {Bandit,
+         plug:
+           {HTTPResponsePlug,
+            status: 200, body: body, response_headers: [{"content-encoding", "identity, GZip"}]},
+         ip: {127, 0, 0, 1},
+         port: 0},
+        id: :content_encoding_bandit
+      )
+
+    {:ok, {_address, port}} = ThousandIsland.listener_info(bandit)
+
+    client =
+      start_supervised!(
+        Supervisor.child_spec(
+          {Client, owner: self(), url: "http://127.0.0.1:#{port}/mcp"},
+          id: :content_encoding_client
+        )
+      )
+
+    message = %{"jsonrpc" => "2.0", "id" => 1, "method" => "tools/list", "params" => %{}}
+
+    assert {:error, {:unexpected_content_encoding, "GZip"}} = Client.send_message(client, message)
+    refute_receive {:mcp_message, _message}, 50
+  end
+
+  test "accepts an explicit identity response content encoding" do
+    body = %{"jsonrpc" => "2.0", "id" => 1, "result" => %{"tools" => []}}
+
+    bandit =
+      start_supervised!(
+        {Bandit,
+         plug:
+           {HTTPResponsePlug,
+            status: 200, body: body, response_headers: [{"content-encoding", "IDENTITY"}]},
+         ip: {127, 0, 0, 1},
+         port: 0},
+        id: :identity_content_encoding_bandit
+      )
+
+    {:ok, {_address, port}} = ThousandIsland.listener_info(bandit)
+
+    client =
+      start_supervised!(
+        Supervisor.child_spec(
+          {Client, owner: self(), url: "http://127.0.0.1:#{port}/mcp"},
+          id: :identity_content_encoding_client
+        )
+      )
+
+    message = %{"jsonrpc" => "2.0", "id" => 1, "method" => "tools/list", "params" => %{}}
+
+    assert :ok = Client.send_message(client, message)
+    assert_receive {:mcp_message, ^body}
+  end
+
+  test "header_provider covers legacy SSE and DELETE lifecycle requests" do
+    bandit =
+      start_supervised!(
+        {Bandit, plug: {LegacySessionCapturePlug, test_pid: self()}, ip: {127, 0, 0, 1}, port: 0},
+        id: :legacy_provider_lifecycle_bandit
+      )
+
+    {:ok, {_address, port}} = ThousandIsland.listener_info(bandit)
+    counter = start_supervised!({Agent, fn -> 0 end})
+
+    provider = fn ->
+      token = Agent.get_and_update(counter, fn n -> {n + 1, n + 1} end)
+      [{"authorization", "Bearer dynamic-#{token}"}]
+    end
+
+    client =
+      start_supervised!(
+        Supervisor.child_spec(
+          {Client, owner: self(), url: "http://127.0.0.1:#{port}/mcp", header_provider: provider},
+          id: :legacy_provider_lifecycle_client
+        )
+      )
+
+    initialize = %{
+      "jsonrpc" => "2.0",
+      "id" => 1,
+      "method" => "initialize",
+      "params" => %{
+        "protocolVersion" => "2025-11-25",
+        "capabilities" => %{},
+        "clientInfo" => %{"name" => "client", "version" => "1.0.0"}
+      }
+    }
+
+    assert :ok = Client.send_message(client, initialize)
+    assert_receive {:legacy_captured_request, post_headers, ^initialize}
+    assert header(post_headers, "authorization") == "Bearer dynamic-1"
+    assert header(post_headers, "accept-encoding") == "identity"
+    assert_receive {:mcp_message, %{"id" => 1}}
+
+    assert_receive {:legacy_lifecycle_request, "GET", get_headers}, 1_000
+    assert header(get_headers, "authorization") == "Bearer dynamic-2"
+    assert header(get_headers, "accept-encoding") == "identity"
+
+    assert :ok = Client.close(client)
+    assert_receive {:legacy_lifecycle_request, "DELETE", delete_headers}, 1_000
+    assert header(delete_headers, "authorization") == "Bearer dynamic-3"
+    assert header(delete_headers, "accept-encoding") == "identity"
+  end
+
+  test "owner exit cannot kill a detached legacy session DELETE" do
+    bandit =
+      start_supervised!(
+        {Bandit,
+         plug: {__MODULE__.OwnerCleanupPlug, test_pid: self()}, ip: {127, 0, 0, 1}, port: 0},
+        id: :owner_cleanup_bandit
+      )
+
+    {:ok, {_address, port}} = ThousandIsland.listener_info(bandit)
+    test_pid = self()
+    calls = start_supervised!({Agent, fn -> 0 end})
+
+    provider = fn ->
+      call = Agent.get_and_update(calls, fn n -> {n + 1, n + 1} end)
+
+      if call < 3 do
+        [{"authorization", "Bearer lifecycle-#{call}"}]
+      else
+        send(test_pid, {:owner_cleanup_provider_waiting, self()})
+
+        receive do
+          :release_delete_provider -> [{"authorization", "Bearer lifecycle-delete"}]
+        end
+      end
+    end
+
+    owner_pid = spawn(fn -> Process.sleep(:infinity) end)
+
+    client =
+      start_supervised!(
+        Supervisor.child_spec(
+          {Client,
+           owner: owner_pid,
+           url: "http://127.0.0.1:#{port}/mcp",
+           header_provider: provider,
+           header_provider_timeout: 5_000},
+          id: :owner_cleanup_client,
+          restart: :temporary
+        )
+      )
+
+    initialize = %{
+      "jsonrpc" => "2.0",
+      "id" => 1,
+      "method" => "initialize",
+      "params" => %{
+        "protocolVersion" => "2025-11-25",
+        "capabilities" => %{},
+        "clientInfo" => %{"name" => "client", "version" => "1.0.0"}
+      }
+    }
+
+    assert :ok = Client.send_message(client, initialize)
+    assert_receive {:legacy_captured_request, _headers, ^initialize}, 1_000
+    assert_receive {:owner_cleanup_get, get_handler, _headers}, 1_000
+
+    monitor = Process.monitor(client)
+    Process.exit(owner_pid, :kill)
+
+    assert_receive {:owner_cleanup_provider_waiting, provider_pid}, 1_000
+    assert_receive {:DOWN, ^monitor, :process, ^client, :normal}, 1_000
+
+    send(provider_pid, :release_delete_provider)
+    assert_receive {:owner_cleanup_delete, delete_headers}, 1_000
+    assert header(delete_headers, "authorization") == "Bearer lifecycle-delete"
+    assert header(delete_headers, "accept-encoding") == "identity"
+
+    send(get_handler, :finish_get)
   end
 
   test "legacy initialize binds both session id and negotiated protocol version" do
@@ -634,4 +1062,38 @@ defmodule MCP.Transport.StreamableHTTPClientTest.ConcurrentLegacyInitializePlug 
         Plug.Conn.send_resp(conn, 202, "")
     end
   end
+end
+
+defmodule MCP.Transport.StreamableHTTPClientTest.OwnerCleanupPlug do
+  @moduledoc false
+  @behaviour Plug
+
+  alias MCP.Test.LegacySessionCapturePlug
+
+  @impl true
+  def init(opts), do: opts
+
+  @impl true
+  def call(%Plug.Conn{method: "GET"} = conn, opts) do
+    test_pid = Keyword.fetch!(opts, :test_pid)
+    send(test_pid, {:owner_cleanup_get, self(), conn.req_headers})
+
+    conn =
+      conn
+      |> Plug.Conn.put_resp_content_type("text/event-stream")
+      |> Plug.Conn.send_chunked(200)
+
+    {:ok, conn} = Plug.Conn.chunk(conn, ": connected\n\n")
+
+    receive do
+      :finish_get -> conn
+    end
+  end
+
+  def call(%Plug.Conn{method: "DELETE"} = conn, opts) do
+    send(Keyword.fetch!(opts, :test_pid), {:owner_cleanup_delete, conn.req_headers})
+    Plug.Conn.send_resp(conn, 200, "")
+  end
+
+  def call(conn, opts), do: LegacySessionCapturePlug.call(conn, opts)
 end

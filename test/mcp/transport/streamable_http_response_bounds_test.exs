@@ -111,6 +111,61 @@ defmodule MCP.Transport.StreamableHTTPResponseBoundsTest do
     assert {:error, {:response_too_large, 64}} = ResponseReader.request([url: url], policy)
   end
 
+  test "streamed responses reject unexpected content coding before body consumption" do
+    bandit =
+      start_supervised!(
+        {Bandit,
+         plug:
+           {MCP.Test.HTTPResponsePlug,
+            status: 200, body: "{}", response_headers: [{"content-encoding", "gzip"}]},
+         ip: {127, 0, 0, 1},
+         port: 0},
+        id: {MCP.Test.HTTPResponsePlug, make_ref()}
+      )
+
+    {:ok, {_address, port}} = ThousandIsland.listener_info(bandit)
+
+    assert {:error, {:unexpected_content_encoding, "gzip"}} =
+             ResponseReader.request(
+               [url: "http://127.0.0.1:#{port}/mcp", stream: true],
+               SecurityPolicy.default()
+             )
+  end
+
+  test "concurrent first-use streams tolerate Finch pool registration races" do
+    url = start_response_server("{}", content_type: "application/json")
+    {:ok, policy} = SecurityPolicy.new(connect_timeout: 4_321)
+    parent = self()
+
+    tasks =
+      for _index <- 1..12 do
+        Task.async(fn ->
+          send(parent, {:pool_race_ready, self()})
+
+          receive do
+            :pool_race_go -> :ok
+          end
+
+          case ResponseReader.request([url: url, stream: true], policy) do
+            {:stream, response} ->
+              _ = Req.cancel_async_response(response)
+              :ok
+
+            other ->
+              other
+          end
+        end)
+      end
+
+    Enum.each(tasks, fn %{pid: pid} ->
+      assert_receive {:pool_race_ready, ^pid}, 1_000
+    end)
+
+    Enum.each(tasks, fn %{pid: pid} -> send(pid, :pool_race_go) end)
+
+    assert Enum.map(tasks, &Task.await(&1, 5_000)) == List.duplicate(:ok, length(tasks))
+  end
+
   test "idle timeout cancels the response" do
     {response, ref} = async_response()
 
