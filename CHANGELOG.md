@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Conformance ledger integrity checks, machine-readable readiness reports and a
+  strict `--require-ready` release prerequisite. CI now surfaces recorded
+  blockers separately from successful selected-scenario executions; historical
+  incomplete evidence stays valid without being misrepresented as release-ready.
 - Stable MCP Apps SEP-1865 support: extension capability helpers, lossless UI
   metadata/resources, bounded CSP/permission/content validation, immutable App
   definitions, exact-client resolution, and pure View/host bridge codecs.
