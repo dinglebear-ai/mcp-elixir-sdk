@@ -47,6 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Package smoke now boots isolated consumer projects from both the unpacked
   artifact and the exact immutable Git dependency advertised in the README,
   checking application identity, version, protocol roundtrip, and quickstart.
+- Reused the runtime-hardening process-discovery fix: Linux discovery has its
+  own bounded window, separate from the graceful timeout, so a one-millisecond
+  shutdown budget cannot hide already-running stdio descendants.
 - Server callback families are now atomic at configuration time: partial tools,
   resources, or prompts implementations return
   `{:invalid_callback_family, family, missing_callback}` instead of advertising
@@ -88,9 +91,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Applied the existing runtime-hardening fix that gives Linux process discovery
-  its own bounded window, so a one-millisecond graceful shutdown timeout cannot
-  leave an already-running stdio descendant undiscovered.
 - SSE parsing recognises `\r\n\r\n` event delimiters. CRLF-terminated streams
   previously yielded no events and were eventually rejected as oversized.
 - Stdout frames buffered at a frame-turn boundary are delivered when the
