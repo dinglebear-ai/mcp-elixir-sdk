@@ -53,7 +53,7 @@ def deps do
   [
     {:plexus,
      git: "https://github.com/dinglebear-ai/mcp-elixir-sdk.git",
-     ref: "4dfeb0276a04e234a297d4cf7d9047d95134d583"}
+     ref: "86ce543498ee8cd1b62fe66e15f7380e2feb07bb"}
   ]
 end
 ```

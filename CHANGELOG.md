@@ -88,6 +88,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Applied the existing runtime-hardening fix that gives Linux process discovery
+  its own bounded window, so a one-millisecond graceful shutdown timeout cannot
+  leave an already-running stdio descendant undiscovered.
 - SSE parsing recognises `\r\n\r\n` event delimiters. CRLF-terminated streams
   previously yielded no events and were eventually rejected as oversized.
 - Stdout frames buffered at a frame-turn boundary are delivered when the

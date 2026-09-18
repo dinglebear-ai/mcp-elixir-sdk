@@ -2,11 +2,11 @@ defmodule MCP.Tooling.PackageSmokeTest do
   use ExUnit.Case, async: false
 
   @script Path.expand("../../scripts/package_smoke.exs", __DIR__)
-  @dependency ~s|{:plexus, git: "https://github.com/dinglebear-ai/mcp-elixir-sdk.git", ref: "4dfeb0276a04e234a297d4cf7d9047d95134d583"}|
+  @dependency ~s|{:plexus, git: "https://github.com/dinglebear-ai/mcp-elixir-sdk.git", ref: "86ce543498ee8cd1b62fe66e15f7380e2feb07bb"}|
 
   test "consumer smoke rejects mutable or invalid coordinates before running Mix" do
     for dependency <- [
-          String.replace(@dependency, "4dfeb0276a04e234a297d4cf7d9047d95134d583", "main"),
+          String.replace(@dependency, "86ce543498ee8cd1b62fe66e15f7380e2feb07bb", "main"),
           String.replace(@dependency, ":plexus", ":mcp_elixir_sdk"),
           String.replace(@dependency, "https://", "http://"),
           String.replace(@dependency, "github.com", "example.com")
