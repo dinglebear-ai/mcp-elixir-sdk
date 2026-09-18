@@ -1,4 +1,4 @@
-# MCP Elixir SDK 2.0 Meta-plan and Progress Ledger
+# Plexus 2.0 Meta-plan and Progress Ledger
 
 **Status:** Implementation merged; PR review remediation and post-merge hosted
 verification passed; release publication pending
@@ -6,7 +6,7 @@ verification passed; release publication pending
 **Target release:** `2.0.0`
 **Baseline commit:** `2b34b324b390f7368e5c2bb10918ceabdea75b93`
 (`2.0.0-dev.1`)
-**Pull request:** [`jmagar/mcp-elixir-sdk#1`](https://github.com/jmagar/mcp-elixir-sdk/pull/1)
+**Pull request:** [`dinglebear-ai/plexus#1`](https://github.com/dinglebear-ai/plexus/pull/1)
 
 This is the single progress tracker for the original six-slice 2.0 effort and
 the S7 compatibility correction. It records
@@ -41,7 +41,7 @@ them.
 
 PR #1 was merged to `main` as commit `519835e`. The merge result is verified by
 hosted CI run
-[`31360537441`](https://github.com/jmagar/mcp-elixir-sdk/actions/runs/31360537441):
+[`31360537441`](https://github.com/dinglebear-ai/plexus/actions/runs/31360537441):
 all three supported Elixir/OTP test jobs, quality checks, and dual-era
 conformance passed. Tagging and Hex publication remain distinct release gates.
 
@@ -313,7 +313,7 @@ is the current whole-branch denominator after final adversarial remediation.
 | Type analysis | `mix dialyzer`: 0 errors, 0 skipped, 0 unnecessary skips |
 | Security | `mix hex.audit`: no retired or advisory packages |
 | Documentation | `mix docs`: generated without warnings |
-| Package | `mix hex.build`: `mcp_elixir_sdk-2.0.0-dev.1.tar` built; current guides, ADRs, and conformance ledger included |
+| Package | `mix hex.build`: `plexus-2.0.0-dev.1.tar` built; current guides, ADRs, and conformance ledger included |
 | Server conformance | Harness `0.2.0-alpha.11`, requirements `2026-07-28`: all **120 scored checks** pass, 0 failures, 0 warnings |
 | Pending draft server scenarios | JSON Schema + standard/custom header validation: **32/32** checks pass |
 | Client conformance | Eight required scenarios: **63/63** checks pass, 0 warnings |
@@ -471,7 +471,7 @@ and regression-tested or recorded as an explicit, enumerated scope exclusion:
 
 Post-remediation local evidence: **367 tests, 0 failures**; format and
 warnings-as-errors compilation pass. Hosted CI run
-[`31304324703`](https://github.com/jmagar/mcp-elixir-sdk/actions/runs/31304324703)
+[`31304324703`](https://github.com/dinglebear-ai/plexus/actions/runs/31304324703)
 repeated the runtime matrix, static-analysis, package, advisory, and official
 conformance gates successfully.
 

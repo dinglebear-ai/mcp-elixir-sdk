@@ -76,7 +76,7 @@ shipped 1.1.0 (which remains on 2025-11-25).
 ## Sub-decisions (resolved by PO, 2026-07-20)
 
 1. ~~**No parallel support — package-level cutover.** `main` moves to 2.0.0/stateless. Consumers who
-   want the old spec stay on Hex `{:mcp_elixir_sdk, "~> 1.1"}` (immutable on Hex, so it remains
+   want the old spec stay on Hex `{:plexus, "~> 1.1"}` (immutable on Hex, so it remains
    available at zero cost). See sub-decision 5 for the mechanism choice.~~ **Superseded by ADR-007.**
 2. **The `~> 1.1` line is frozen except for security fixes.** No feature backports. A security issue in
    the 1.1.x code EMFA runs in production may warrant a 1.1.x patch; nothing else.

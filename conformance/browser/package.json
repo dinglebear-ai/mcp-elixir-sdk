@@ -1,5 +1,5 @@
 {
-  "name": "mcp-elixir-sdk-apps-browser-interop",
+  "name": "plexus-apps-browser-interop",
   "private": true,
   "devDependencies": {
     "@modelcontextprotocol/inspector": "2.3.0",

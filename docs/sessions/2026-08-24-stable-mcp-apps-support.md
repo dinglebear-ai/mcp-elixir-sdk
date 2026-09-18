@@ -1,13 +1,13 @@
 ---
 date: 2026-08-24 13:14:07 EDT
-repo: git@github.com:jmagar/mcp-elixir-sdk.git
+repo: git@github.com:dinglebear-ai/plexus.git
 branch: codex/mcp-apps
 head: 56d24bf5796420de1fa24fa3efa262a2c039dbee
 session id: 01a03241-7157-78d1-a9f7-ef0da13c54c4
 transcript: /home/jmagar/.codex/sessions/2026/08/24/rollout-2026-08-24T01-32-24-01a03241-7157-78d1-a9f7-ef0da13c54c4.jsonl
 working directory: /home/jmagar/workspace/mcp-elixir-sdk/.worktrees/codex/mcp-apps
 worktree: /home/jmagar/workspace/mcp-elixir-sdk/.worktrees/codex/mcp-apps
-pr: "#5 feat: add stable MCP Apps support (https://github.com/jmagar/mcp-elixir-sdk/pull/5)"
+pr: "#5 feat: add stable MCP Apps support (https://github.com/dinglebear-ai/plexus/pull/5)"
 beads: mcp-elixir-sdk-ehg, mcp-elixir-sdk-ehg.1, mcp-elixir-sdk-ehg.2, mcp-elixir-sdk-ehg.3, mcp-elixir-sdk-ehg.4
 ---
 
@@ -183,7 +183,7 @@ Implemented stable MCP Apps 2026-01-26 support at the Elixir SDK boundary, inclu
 
 ## References
 
-- [PR #5: stable MCP Apps support](https://github.com/jmagar/mcp-elixir-sdk/pull/5)
+- [PR #5: stable MCP Apps support](https://github.com/dinglebear-ai/plexus/pull/5)
 - [Stable MCP Apps specification](https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx)
 - [MCP Apps architecture overview](https://modelcontextprotocol.io/extensions/apps/overview)
 - `docs/adr/0009-mcp-apps-support.md`

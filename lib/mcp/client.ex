@@ -2629,12 +2629,12 @@ defmodule MCP.Client do
 
   defp build_client_info(map) when is_map(map) do
     %Implementation{
-      name: Map.get(map, :name) || Map.get(map, "name", "mcp_elixir_sdk"),
-      version: Map.get(map, :version) || Map.get(map, "version", "1.0.0")
+      name: Map.get(map, :name) || Map.get(map, "name", "plexus"),
+      version: Map.get(map, :version) || Map.get(map, "version", MCP.Version.current())
     }
   end
 
-  defp default_info, do: %{name: "mcp_elixir_sdk", version: "1.0.0"}
+  defp default_info, do: %{name: "plexus", version: MCP.Version.current()}
 
   defp validate_start_options(opts) do
     with :ok <- validate_tool_schema_limit(opts),

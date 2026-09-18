@@ -1,4 +1,4 @@
-# MCP Elixir SDK
+# Plexus
 
 An OTP-native Elixir client and server SDK for the Model Context Protocol. The
 unreleased 2.0 line supports stateful `2025-11-25` plus
@@ -51,17 +51,22 @@ current `main` commit):
 ```elixir
 def deps do
   [
-    {:mcp_elixir_sdk,
-     git: "https://github.com/jmagar/mcp-elixir-sdk.git",
-     ref: "e9c7fb8927de1d54c74ffecd21bfed63ba1a19ef"}
+    {:plexus,
+     git: "https://github.com/dinglebear-ai/mcp-elixir-sdk.git",
+     ref: "86ce543498ee8cd1b62fe66e15f7380e2feb07bb"}
   ]
 end
 ```
 
-No published production coordinate is currently advertised.
+This snapshot already contains the `:plexus` OTP application. The repository
+slug remains `mcp-elixir-sdk` until the separately coordinated rename to
+`dinglebear-ai/plexus` is completed and verified. A repository rename is not
+required to evaluate Plexus, and this snapshot is not a production release.
 
-Streamable HTTP uses the optional `Req`, `Plug`, and `Bandit` dependencies. `Req`
-is supported across `>= 0.6.1 and < 0.8.0`. Req 0.6.1 is the security floor;
+The bundled HTTP modules require `Req` and `Plug`, so both are installed
+automatically. `Bandit` remains optional: add `{:bandit, "~> 1.12.5"}` to your
+application to run the HTTP server examples, or use your existing Plug-compatible
+server. `Req` is supported across `>= 0.6.1 and < 0.8.0`. Req 0.6.1 is the security floor;
 earlier releases are affected by CVE-2026-49755.
 
 **Platform support: Unix only.** `erlexec`, which supervises stdio subprocesses in

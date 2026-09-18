@@ -14,7 +14,7 @@ defmodule MCP.Transport.Stdio.SignalTest do
   end
 
   test "a process-exit race does not leak kill diagnostics to the SDK's stderr" do
-    app_ebin = Application.app_dir(:mcp_elixir_sdk, "ebin")
+    app_ebin = Application.app_dir(:plexus, "ebin")
 
     expression =
       ~S|MCP.Transport.Stdio.Signal.dispatch(99_999_999, :sigterm, 1_000)|

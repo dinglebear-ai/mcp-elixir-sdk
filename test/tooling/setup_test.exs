@@ -70,7 +70,7 @@ defmodule MCP.Tooling.SetupTest do
     path =
       Path.join(
         System.tmp_dir!(),
-        "mcp-elixir-sdk-setup-test-#{System.unique_integer([:positive])}"
+        "plexus-setup-test-#{System.unique_integer([:positive])}"
       )
 
     File.mkdir_p!(path)

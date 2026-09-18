@@ -25,7 +25,7 @@ defmodule MCP.Transport.StdioTest do
     test "stdio lazily starts erlexec instead of making every SDK consumer start it" do
       _ = Application.stop(:erlexec)
 
-      refute :erlexec in (Application.spec(:mcp_elixir_sdk, :applications) || [])
+      refute :erlexec in (Application.spec(:plexus, :applications) || [])
       refute Enum.any?(Application.started_applications(), fn {app, _, _} -> app == :erlexec end)
 
       transport = start_echo_transport()

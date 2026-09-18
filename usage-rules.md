@@ -1,7 +1,7 @@
-# MCP Elixir SDK — Usage Rules
+# Plexus — Usage Rules
 
 > Condensed, executable guidance for developers and coding agents using the
-> unreleased `mcp_elixir_sdk` 2.0 release candidate. The [README](README.md) and
+> unreleased `plexus` 2.0 release candidate. The [README](README.md) and
 > generated module documentation are the authoritative public references.
 
 ## Supported MCP revisions
@@ -19,16 +19,18 @@ immutable Git commit rather than a branch:
 ```elixir
 def deps do
   [
-    {:mcp_elixir_sdk,
-     git: "https://github.com/jmagar/mcp-elixir-sdk.git",
-     ref: "e9c7fb8927de1d54c74ffecd21bfed63ba1a19ef"}
+    {:plexus,
+     git: "https://github.com/dinglebear-ai/mcp-elixir-sdk.git",
+     ref: "86ce543498ee8cd1b62fe66e15f7380e2feb07bb"}
   ]
 end
 ```
 
-Streamable HTTP requires the optional `Req`, `Plug`, and `Bandit`
-dependencies. Stdio is Unix-only because the required `erlexec` dependency
-uses a NIF that does not build on Windows.
+The bundled HTTP modules require `Req` and `Plug`; both are transitive
+dependencies. `Bandit` remains optional: add `{:bandit, "~> 1.12.5"}` when
+using the server examples, or use another Plug-compatible server. Stdio is
+Unix-only because the required `erlexec` dependency uses a NIF that does not
+build on Windows.
 
 ## Client
 

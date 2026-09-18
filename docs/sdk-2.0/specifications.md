@@ -1,4 +1,4 @@
-# MCP Elixir SDK 2.0 Specifications
+# Plexus 2.0 Specifications
 
 **Status:** Active engineering specification
 **Target:** MCP core `2026-07-28` and `2025-11-25`, client and server

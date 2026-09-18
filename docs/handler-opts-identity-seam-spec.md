@@ -1,7 +1,7 @@
 # Spec Addition: `handler_opts` request-identity seam (StreamableHTTP.Plug)
 
 ## Document Info
-- **Project**: MCP Elixir SDK (Hex package `mcp_elixir_sdk`)
+- **Project**: Plexus (Hex package `plexus`)
 - **Spec status**: Proposed — **spec only** (implementation tracked in MES-3)
 - **Spec'd against source**: **v1.0.2** (`mix.exs @version "1.0.2"`)
 - **Change class**: **Additive · backward-compatible · 1.1.0 candidate**

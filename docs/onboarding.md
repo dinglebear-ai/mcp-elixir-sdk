@@ -1,4 +1,4 @@
-# Onboarding Guide: MCP Elixir SDK
+# Onboarding Guide: Plexus
 
 > **Archived 1.x onboarding record.** The initialization/session lifecycle
 > below is historical 1.x design material, not the current 2.0 implementation.
@@ -9,14 +9,14 @@
 
 ## For New AI Agents / Developers
 
-This document provides everything needed to start implementing the MCP Elixir SDK library
-(Hex package `mcp_elixir_sdk`; local directory still `/workspace/elixir_code/mcp_ex/`).
+This document provides everything needed to start implementing the Plexus library
+(Hex package `plexus`; local directory still `/workspace/elixir_code/mcp_ex/`).
 
 ---
 
 ## 1. What Is This Project?
 
-MCP Elixir SDK is an Elixir implementation of the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP). MCP is an open standard (like LSP for code editors) that enables standardized communication between LLM applications and external tools/data sources.
+Plexus is an Elixir implementation of the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP). MCP is an open standard (like LSP for code editors) that enables standardized communication between LLM applications and external tools/data sources.
 
 The library provides:
 - **MCP Client** — connects to MCP servers, discovers and calls tools, reads resources, uses prompts
@@ -426,10 +426,10 @@ npx @modelcontextprotocol/conformance@latest test server --url http://localhost:
 
 ## 12. Relationship to ADK
 
-MCP Elixir SDK is standalone — no ADK dependency. The ADK uses it via a thin adapter:
+Plexus is standalone — no ADK dependency. The ADK uses it via a thin adapter:
 
 ```
-adk_ex                          mcp_elixir_sdk
+adk_ex                          plexus
 ├── ADK.Tool.Toolset behaviour  ├── MCP.Client
 │   └── ADK.Tool.McpToolset ────┤   (wraps MCP.Client as Toolset)
 │       name/1 → "mcp:server"  │   list_tools → ADK tool structs

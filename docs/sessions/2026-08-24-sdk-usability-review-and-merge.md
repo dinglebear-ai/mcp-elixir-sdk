@@ -1,11 +1,11 @@
 ---
 date: 2026-08-24 14:39:41 EST
-repo: git@github.com:jmagar/mcp-elixir-sdk.git
+repo: git@github.com:dinglebear-ai/plexus.git
 branch: main
 head: 3576cdaf8ce622de61c56ff614359ca92a97a0e5
 working directory: /home/jmagar/workspace/mcp-elixir-sdk
 worktree: /home/jmagar/workspace/mcp-elixir-sdk
-pr: "#6 feat: harden SDK boundaries and add browser interoperability evidence (https://github.com/jmagar/mcp-elixir-sdk/pull/6)"
+pr: "#6 feat: harden SDK boundaries and add browser interoperability evidence (https://github.com/dinglebear-ai/plexus/pull/6)"
 ---
 
 # SDK usability, review remediation, and merge
@@ -141,11 +141,11 @@ No bead activity observed. `bd list --all --sort updated --reverse --limit 100 -
 
 ## References
 
-- PR #6: https://github.com/jmagar/mcp-elixir-sdk/pull/6
+- PR #6: https://github.com/dinglebear-ai/plexus/pull/6
 - Merge commit: `3576cdaf8ce622de61c56ff614359ca92a97a0e5`
 - Reviewed head: `ecd3cb2fd1b8b3533f34a52dab22f737c003850c`
-- Exact-head CI: https://github.com/jmagar/mcp-elixir-sdk/actions/runs/32762873260
-- Inspector browser evidence: https://github.com/jmagar/mcp-elixir-sdk/actions/runs/32762873251
+- Exact-head CI: https://github.com/dinglebear-ai/plexus/actions/runs/32762873260
+- Inspector browser evidence: https://github.com/dinglebear-ai/plexus/actions/runs/32762873251
 
 ## Next Steps
 

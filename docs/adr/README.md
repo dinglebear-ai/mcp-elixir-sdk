@@ -25,8 +25,10 @@ WP pin Global v2 · Methodology pin Global v1.
 | [ADR-006](0006-no-client-result-cache-in-2.0.md) | Do not cache MCP results in the 2.0 client | **Accepted** (2026-08-08) | — | — |
 | [ADR-007](0007-dual-protocol-era-support.md) | Support both 2025-11-25 and 2026-07-28 in the 2.0 SDK | **Accepted** (2026-08-09) | ADR-002 items 1 and 5; ADR-003 item 5 | — |
 | [ADR-008](0008-dual-version-secure-transports.md) | Dual-version protocol adapters and secure transport policies | **Accepted** (2026-08-10) | — | — |
+| [ADR-009](0009-mcp-apps-support.md) | Stable MCP Apps support in the SDK | **Accepted** (2026-08-24) | — | — |
+| [ADR-010](0010-plexus-brand-identity.md) | Rebrand the SDK as Plexus while preserving `MCP.*` | **Accepted** (2026-09-17) | — | — |
 
-**Next ADR number: ADR-009.**
+**Next ADR number: ADR-011.**
 
 ADR-002 supersedes **only the deferral** in ADR-001, not the whole decision:
 ADR-001's choice to ship 1.1.0 against 2025-11-25 stands. ADR-007 then

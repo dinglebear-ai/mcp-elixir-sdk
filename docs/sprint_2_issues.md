@@ -23,7 +23,7 @@ consumer validation) · MES-4 (v1.1.0 Hex release — last ticket).
   non-keyword fails the session cleanly at `initialize` (HTTP 500 / JSON-RPC -32603, no session
   started, non-leaking `data`).
 - **Release version pinned to exactly 1.1.0.** Semver-correct (additive, backward-compatible) **and**
-  consumer-constrained — EMFA-12 depends on `{:mcp_elixir_sdk, "~> 1.1"}`. Published 2026-07-13.
+  consumer-constrained — EMFA-12 depends on `{:plexus, "~> 1.1"}`. Published 2026-07-13.
 - **Publish is PO-gated.** `mix hex.publish` is the PO's keystroke (Hex password, irreversible). CC
   takes it to a verified dry-run and stops; no publish-capable credential sits next to the agent.
   MES-4 is the **only** ticket that bumps the version and cuts a **release** tag (`v1.1.0` on merge

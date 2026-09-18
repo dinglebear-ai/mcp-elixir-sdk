@@ -101,7 +101,7 @@ defmodule MCP.Transport.StreamableHTTP.Plug do
       application starts the default manager; custom managers must be
       supervised by the host application.
     * `:legacy_endpoint_owner` — registered process name monitored for endpoint
-      shutdown (default: `MCPElixirSDK.Supervisor`). A Phoenix deployment
+      shutdown (default: `Plexus.Supervisor`). A Phoenix deployment
       should set this to its endpoint's registered name so stopping that
       endpoint immediately reclaims its legacy sessions.
     * `:protocol_version` — advertised version (default: the stateless core's).
@@ -242,7 +242,7 @@ defmodule MCP.Transport.StreamableHTTP.Plug do
     legacy_sse_timeout = Keyword.get(opts, :legacy_sse_timeout, 25_000)
     legacy_session_manager = Keyword.get(opts, :legacy_session_manager, LegacySessionManager)
     legacy_endpoint_id = Keyword.get(opts, :legacy_endpoint_id, UUID.uuid4())
-    legacy_endpoint_owner = Keyword.get(opts, :legacy_endpoint_owner, MCPElixirSDK.Supervisor)
+    legacy_endpoint_owner = Keyword.get(opts, :legacy_endpoint_owner, Plexus.Supervisor)
     legacy_session_limit = Keyword.get(opts, :legacy_session_limit, 1_024)
     legacy_sessions_per_identity = Keyword.get(opts, :legacy_sessions_per_identity, 16)
     legacy_session_idle_timeout = Keyword.get(opts, :legacy_session_idle_timeout, 15 * 60_000)

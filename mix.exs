@@ -1,12 +1,12 @@
-defmodule MCPElixirSDK.MixProject do
+defmodule Plexus.MixProject do
   use Mix.Project
 
   @version "2.0.0-rc.1"
-  @source_url "https://github.com/jmagar/mcp-elixir-sdk"
+  @source_url "https://github.com/dinglebear-ai/mcp-elixir-sdk"
 
   def project do
     [
-      app: :mcp_elixir_sdk,
+      app: :plexus,
       version: @version,
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
@@ -16,7 +16,7 @@ defmodule MCPElixirSDK.MixProject do
       dialyzer: [plt_add_apps: [:ex_unit, :erlexec]],
 
       # Hex
-      name: "MCP Elixir SDK",
+      name: "Plexus",
       description:
         "Official-style Elixir SDK for the Model Context Protocol (MCP) — client and server with stdio and Streamable HTTP transports.",
       source_url: @source_url,
@@ -29,7 +29,7 @@ defmodule MCPElixirSDK.MixProject do
   def application do
     [
       extra_applications: [:crypto, :logger],
-      mod: {MCPElixirSDK.Application, []}
+      mod: {Plexus.Application, []}
     ]
   end
 
@@ -88,6 +88,9 @@ defmodule MCPElixirSDK.MixProject do
         ],
         "docs/adr/0009-mcp-apps-support.md": [
           title: "ADR-009 Stable MCP Apps Support"
+        ],
+        "docs/adr/0010-plexus-brand-identity.md": [
+          title: "ADR-010 Plexus Brand Identity"
         ]
       ],
       groups_for_extras: [
@@ -109,7 +112,8 @@ defmodule MCPElixirSDK.MixProject do
           "docs/adr/0006-no-client-result-cache-in-2.0.md",
           "docs/adr/0007-dual-protocol-era-support.md",
           "docs/adr/0008-dual-version-secure-transports.md",
-          "docs/adr/0009-mcp-apps-support.md"
+          "docs/adr/0009-mcp-apps-support.md",
+          "docs/adr/0010-plexus-brand-identity.md"
         ],
         Reference: ["CHANGELOG.md", "LICENSE", "usage-rules.md"]
       ],
@@ -160,9 +164,10 @@ defmodule MCPElixirSDK.MixProject do
       {:elixir_uuid, "~> 1.2"},
       {:erlexec, "~> 2.3", runtime: false},
 
-      # Optional: Streamable HTTP transport
-      {:req, ">= 0.6.1 and < 0.8.0", optional: true},
-      {:plug, "~> 1.16", optional: true},
+      # Bundled HTTP modules reference Req and Plug structs at compile time.
+      {:req, ">= 0.6.1 and < 0.8.0"},
+      {:plug, "~> 1.16"},
+      # Consumers choose their HTTP server; the SDK does not require Bandit.
       {:bandit, "~> 1.12.5", optional: true},
 
       # Dev/test

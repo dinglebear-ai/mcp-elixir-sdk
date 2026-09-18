@@ -23,7 +23,7 @@ if System.get_env("MCP_ERLEXEC_ALLOW_ROOT") == "1" do
   Application.put_env(:erlexec, :limit_users, ["root"])
 end
 
-{:ok, _started} = Application.ensure_all_started(:mcp_elixir_sdk)
+{:ok, _started} = Application.ensure_all_started(:plexus)
 
 {:ok, transport} =
   MCP.Transport.Stdio.start_link(

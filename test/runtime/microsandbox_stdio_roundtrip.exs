@@ -202,7 +202,7 @@ end
 # ---------------------------------------------------------------------------
 
 run_child = fn ->
-  {:ok, _started} = Application.ensure_all_started(:mcp_elixir_sdk)
+  {:ok, _started} = Application.ensure_all_started(:plexus)
 
   {:ok, transport} =
     MCP.Transport.Stdio.start_link(
@@ -225,7 +225,7 @@ end
 # ---------------------------------------------------------------------------
 
 run_parent = fn ->
-  {:ok, _started} = Application.ensure_all_started(:mcp_elixir_sdk)
+  {:ok, _started} = Application.ensure_all_started(:plexus)
   MicrosandboxProbe.ensure_sandbox!()
 
   # -- Phase 1: a real MCP server answers through the microVM boundary. -------
