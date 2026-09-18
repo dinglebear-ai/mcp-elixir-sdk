@@ -153,6 +153,30 @@ defmodule MCP.Tooling.ConformanceLedgersTest do
     assert_invalid(root, "excluded modern scenario is scored")
   end
 
+  test "required modern scenarios cannot be deleted from the denominator", %{root: root} do
+    change(root, @modern, &update_in(&1, ["scenarios"], fn [_first | rest] -> rest end))
+    assert_invalid(root, "modern required scenarios")
+  end
+
+  test "required modern checks cannot be silently relabeled out of scope", %{root: root} do
+    change(
+      root,
+      @modern,
+      &update_in(&1, ["scenarios"], fn [first | rest] ->
+        [
+          Map.merge(first, %{
+            "status" => "excluded",
+            "scored" => false,
+            "exclusionReason" => "unapproved scope reduction"
+          })
+          | rest
+        ]
+      end)
+    )
+
+    assert_invalid(root, "modern required scenarios")
+  end
+
   test "duplicate modern evidence is rejected", %{root: root} do
     change(
       root,

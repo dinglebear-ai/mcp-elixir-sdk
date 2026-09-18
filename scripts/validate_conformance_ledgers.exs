@@ -5,6 +5,75 @@ defmodule MCP.ValidateConformanceLedgers do
   @legacy_scenarios ~w(initialize tools_call elicitation-sep1034-client-defaults sse-retry)
   @statuses ~w(passed failed partial excluded)
 
+  # These identities and scoring flags pin the reviewed scope, not its outcomes.
+  # A harness/scope update must explicitly review this list and the ledgers together.
+  @modern_server_scenarios ~w(
+    server-caching
+    server-completion-complete
+    server-dns-rebinding-protection
+    server-input-required-result-basic-elicitation
+    server-input-required-result-basic-list-roots
+    server-input-required-result-basic-sampling
+    server-input-required-result-capability-check
+    server-input-required-result-ignore-extra-params
+    server-input-required-result-missing-input-response
+    server-input-required-result-multi-round
+    server-input-required-result-multiple-input-requests
+    server-input-required-result-non-tool-request
+    server-input-required-result-request-state
+    server-input-required-result-result-type
+    server-input-required-result-tampered-state
+    server-input-required-result-unsupported-methods
+    server-input-required-result-validate-input
+    server-prompts-get-embedded-resource
+    server-prompts-get-simple
+    server-prompts-get-with-args
+    server-prompts-get-with-image
+    server-prompts-list
+    server-resources-list
+    server-resources-read-binary
+    server-resources-read-text
+    server-resources-templates-read
+    server-sep-2164-resource-not-found
+    server-server-sse-multiple-streams
+    server-server-stateless
+    server-tools-call-audio
+    server-tools-call-embedded-resource
+    server-tools-call-error
+    server-tools-call-image
+    server-tools-call-mixed-content
+    server-tools-call-simple-text
+    server-tools-call-with-progress
+    server-tools-list
+    server-http-custom-header-server-validation
+    server-http-header-validation
+    server-json-schema-2020-12
+  )
+
+  @modern_client_scenarios ~w(
+    tools_call
+    request-metadata
+    sep-2322-client-request-state
+    http-standard-headers
+    http-custom-headers
+    http-invalid-tool-headers
+    json-schema-ref-no-deref
+    json-schema-2020-12-preservation
+  )
+
+  @modern_excluded_server_scenarios ~w(
+    server-tasks-capability-negotiation
+    server-tasks-dispatch-and-envelope
+    server-tasks-lifecycle
+    server-tasks-mrtr-composition
+    server-tasks-mrtr-input
+    server-tasks-request-headers
+    server-tasks-request-state-removal
+    server-tasks-required-task-error
+    server-tasks-status-notifications
+    server-tasks-wire-fields
+  )
+
   def run!(args) do
     mode = mode!(args)
     modern = decode!("conformance/scenarios.json")
@@ -76,6 +145,14 @@ defmodule MCP.ValidateConformanceLedgers do
     end
 
     Enum.each(scenarios, &validate_modern_scenario!/1)
+
+    expected =
+      Enum.map(@modern_server_scenarios, &{"server", &1, true}) ++
+        Enum.map(@modern_client_scenarios, &{"client", &1, true}) ++
+        Enum.map(@modern_excluded_server_scenarios, &{"server", &1, false})
+
+    actual = Enum.map(scenarios, &{&1["side"], &1["name"], &1["scored"]})
+    require_equal!(Enum.sort(actual), Enum.sort(expected), "modern required scenarios")
   end
 
   defp validate_modern_scenarios!(_), do: raise("modern ledger has no scenarios")

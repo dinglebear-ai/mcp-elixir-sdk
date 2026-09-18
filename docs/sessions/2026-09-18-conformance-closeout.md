@@ -67,6 +67,12 @@ The previous validator hardcoded `client.status == incomplete`, permanently
 expected `initialize` to be excluded and `sse-retry` to be partial, accepted
 contradictory passing check counts, and silently ignored unknown CLI options.
 The first regression run recorded 14 tests with 13 failures against that code.
+A final review then demonstrated two further passing-invalid-evidence cases:
+a required modern scenario could be deleted or relabeled out of scope. Those
+two additional tests failed before the follow-up fix and now pass. The guard
+pins the existing 48 scored modern identities plus 10 documented unscored
+Tasks cases, including their scoring flags. Scope changes require explicit
+review alongside the harness pin; outcome statuses are not hardcoded.
 
 The replacement keeps the required four-scenario legacy denominator fixed but
 derives the client summary from real statuses. It validates counts, missing
@@ -81,10 +87,10 @@ from executed-scenario success and never infers full release qualification.
 ## Verification of this slice
 
 Final local gates passed on Elixir 1.18.4 / OTP 27.2.3 with two schedulers:
-692 tests, zero failures, 15 platform skips; formatting, warnings-as-errors
+694 tests, zero failures, 15 platform skips; formatting, warnings-as-errors
 compilation, strict Credo, Dialyzer, documentation generation, package smoke,
-Hex audit, unused-dependency checking and ledger validation all passed. The
-14 new regression tests were rerun after fixture-helper cleanup.
+Hex audit, unused-dependency checking and ledger validation all passed. All
+16 new regression tests pass, including the final modern-scope guards.
 
 Both official server requirement commands exited zero. The November server
 reported 81 passed checks and zero failed checks. The July run still lists

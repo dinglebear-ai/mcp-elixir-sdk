@@ -42,8 +42,10 @@ The artifact is retained for 14 days.
 ## Evidence validity is not release readiness
 
 The validator accepts truthful incomplete evidence but rejects contradictory
-statuses, missing or duplicate required legacy scenarios, malformed check
-counts, counted exclusions, and unexplained limitations. A passed result must
+statuses, missing or duplicate required scenarios in either protocol era,
+malformed check counts, counted exclusions, and unexplained limitations.
+Modern scenario identities and scoring flags are pinned alongside the harness;
+deleting a required case or relabeling it out of scope is not a passing result. A passed result must
 include nonzero passing checks and no failures, warnings, or skips. The pinned
 legacy denominator stays fixed, but its statuses can advance to passed without
 changing validator source. No protocol revision is enabled by this tooling.
